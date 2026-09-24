@@ -76,10 +76,27 @@ def schedule(parts):
     print(f"schedule rows={len(rows)} match={hit} ({ratio:.0%})")
     return sched if ratio >= 0.8 else {}
 
+def validate(parts, res):
+    """公式の形式が変わったら失敗させる → GitHubから所有者にメールが届く。data.json は上書きしない"""
+    errs = []
+    if len(parts) < 100: errs.append(f"participants too few: {len(parts)}")
+    main_cats = {p["cat"] for p in parts if not p["res"]}
+    hit = len(main_cats & set(res))
+    if hit < 0.8 * len(main_cats): errs.append(f"results rows match only {hit}/{len(main_cats)} entries")
+    for cat, c in res.items():
+        a, b, cc, t = (num(c[i]) for i in (6, 7, 8, 9))
+        for k, v in (("A", a), ("B", b), ("C", cc)):
+            if v is not None and not 0 <= v <= 100: errs.append(f"{cat} {k}={v} out of range")
+        if None not in (a, b, cc, t) and a + b + cc != t: errs.append(f"{cat} total {t} != {a}+{b}+{cc}")
+        if c[9] and t is None: errs.append(f"{cat} total not numeric: {c[9]!r}")
+    if errs:
+        print("VALIDATION FAILED:"); [print(" -", e) for e in errs[:30]]
+        sys.exit(1)
+
 def main():
     parts, leaders, names = participants()
-    if len(parts) < 50: sys.exit("participants parse failed")
     res = results()
+    validate(parts, res)
     for p in parts:
         c = res.get(p["cat"])
         p["st"] = num(c[1]) if c else None
