@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14231B">
+<title>WUSV 2026 Tracker</title>
+<meta name="description" content="WUSV World Championship IP 2026 — live A/B/C scores, rankings, start times. 出場選手・成績・スケジュール">
+<meta property="og:title" content="WUSV 2026 Tracker">
+<meta property="og:description" content="Live A/B/C scores & rankings · 出場選手・成績をスマホで">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="toprow">
+    <div class="eyebrow">WUSV World Championship IP</div>
+    <div class="tools">
+      <div class="lang" role="group" aria-label="Language">
+        <button data-lang="ja" aria-pressed="true">JA</button><button data-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <button class="tbtn" id="shareBtn" data-i="share">共有</button>
+    </div>
+  </div>
+  <h1>WUSV <span>2026</span> <b data-i="title">トラッカー</b></h1>
+  <div class="sub"><span data-i="dates"></span> · <span class="live" id="live"><i></i><span id="liveTxt"></span></span></div>
+  <div class="rail-legend" aria-hidden="true"><i></i><i></i><i></i></div>
+</header>
+
+<div class="bar">
+  <label class="search">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+    <input id="q" type="search" autocomplete="off">
+    <button class="clear" id="qx" aria-label="clear">×</button>
+  </label>
+  <div class="chips" id="chips" role="toolbar"></div>
+  <div class="meta"><span id="count"></span>
+    <label><input type="checkbox" id="showRes"> <span data-i="showRes"></span></label>
+  </div>
+</div>
+
+<main>
+  <section class="view on" id="v-list"></section>
+  <section class="view" id="v-rank"></section>
+  <section class="view" id="v-my"></section>
+  <section class="view" id="v-sched"></section>
+  <footer><span data-i="src"></span> <a href="https://wusv2026.fci.systems/participants.php" target="_blank" rel="noopener">fci.systems</a> · <span data-i="upd"></span> <span id="upd">—</span> JST<br><span data-i="tie"></span></footer>
+</main>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-v="list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span data-i="tList"></span></button>
+  <button role="tab" aria-selected="false" data-v="rank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21V11H3v10h5Zm6 0V4H9v17h5Zm6 0v-7h-5v7h5Z"/></svg><span data-i="tRank"></span></button>
+  <button role="tab" aria-selected="false" data-v="my"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg><span data-i="tMy"></span><span class="dot" id="myDot" hidden></span></button>
+  <button role="tab" aria-selected="false" data-v="sched"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span data-i="tSched"></span></button>
+</nav>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"><div id="sheetBody"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ============ i18n ============ */
+const I18N = {
+  ja: {
+    title:"トラッカー", dates:"2026年10月5日〜11日（競技 7〜11日）", share:"共有",
+    ph:"🇯🇵・日本・ハンドラー・犬名・JP-01", showRes:"補欠も表示", all:"すべて", fav:"★ マイ選手",
+    tList:"出場選手", tRank:"順位", tMy:"マイ選手", tSched:"日程",
+    src:"データ：公式", upd:"最終更新", tie:"順位は総合点の高い順。同点ならC科目の高い方が上位",
+    live:"自動更新中", offline:"オフライン（前回のデータ）", loading:"読み込み中…",
+    dogs:(n,c)=>`${n} 頭 / ${c} か国`, rankN:n=>`順位対象 ${n} 頭`, myN:n=>`マイ選手 ${n} 頭`,
+    male:"♂ オス", female:"♀ メス", age:(y,m)=>`${y}歳${m}ヶ月`, reserve:"補欠",
+    sec:{A:"追求",B:"服従",C:"防衛"}, pend:"未実施", ofN:n=>`${n}/3 科目`,
+    rating:"評価", done:"済", entries:"出場頭数",
+    none:"該当する選手がいません。検索語を短くするか、国を「すべて」に戻してください。",
+    noScores:`まだ成績が出ていません（競技は <b>10月7日（水）</b>開始）。公式に成績が掲載されると、数分以内にここへ自動で反映されます。`,
+    openRes:"公式リザルトを開く →", openSched:"公式スケジュールを開く →",
+    noSched:`各選手のA・B・C出番時刻（スタートリスト）は、まだ公式発表されていません。発表されると自動でここに表示され、日付・科目・国・名前から探せます。`,
+    plan:[["10/5 月","大会期間開始（受付・獣医検査・公式練習）"],["10/7 水","競技開始"],["10/8 木","競技"],["10/9 金","競技"],["10/10 土","競技"],["10/11 日","競技最終日"]],
+    wd:["日","月","火","水","木","金","土"], mon:"10月",
+    slots:n=>`${n} 件の出番`, compDays:"競技日 10/7〜10/11", noSlot:"この条件の出番はありません。",
+    myEmpty:`まだマイ選手がいません。「出場選手」や「順位」でカードの <b>★</b> をタップすると、ここでまとめて追跡できます。得点が入ると <b>NEW</b> と表示されます。`,
+    newBadge:"NEW", nextUp:"次の出番", notifyOn:"🔔 通知をオン", notifyOk:"🔔 通知オン", shareFav:"マイ選手を共有", clearNew:"NEWを消す",
+    toastNew:n=>`マイ選手の成績が ${n} 件更新されました`,
+    shareTitle:"このトラッカーを共有", shareText:"下のURLを送れば、誰でもスマホで開けます。",
+    copy:"コピー", copied:"コピーしました", close:"閉じる", nativeShare:"LINE などで送る",
+    favShareTitle:"マイ選手を共有", favShareText:n=>`あなたのマイ選手 ${n} 頭を入れたリンクです。受け取った人は1タップで同じ選手を追跡できます。`,
+    importTitle:"マイ選手の追加", importText:n=>`共有リンクに ${n} 頭の選手が含まれています。あなたのマイ選手に追加しますか？`, add:"追加する", skip:"追加しない", added:n=>`${n} 頭を追加しました`,
+    notifyDenied:"通知が許可されていません。ブラウザの設定から許可してください。",
+    notifyNote:"通知はこのページを開いている間に届きます。",
+    favAdd:"マイ選手に追加", favDel:"マイ選手から外す"
+  },
+  en: {
+    title:"Tracker", dates:"Oct 5–11, 2026 (competition Oct 7–11)", share:"Share",
+    ph:"🇯🇵 · Japan · handler · dog · JP-01", showRes:"Show reserves", all:"All", fav:"★ My dogs",
+    tList:"Entries", tRank:"Ranking", tMy:"My dogs", tSched:"Schedule",
+    src:"Data: official", upd:"Updated", tie:"Ranked by total; ties broken by higher C score",
+    live:"Live", offline:"Offline (last data)", loading:"Loading…",
+    dogs:(n,c)=>`${n} dogs / ${c} countries`, rankN:n=>`${n} ranked`, myN:n=>`${n} tracked`,
+    male:"♂ Male", female:"♀ Female", age:(y,m)=>`${y}y ${m}m`, reserve:"Reserve",
+    sec:{A:"Tracking",B:"Obedience",C:"Protection"}, pend:"Pending", ofN:n=>`${n}/3 phases`,
+    rating:"Rating", done:"done", entries:"Entries",
+    none:"No matches. Try a shorter search or reset the country filter to “All”.",
+    noScores:`No scores yet — competition starts <b>Wed, Oct 7</b>. Scores appear here automatically within minutes of being posted officially.`,
+    openRes:"Open official results →", openSched:"Open official schedule →",
+    noSched:`Individual A/B/C start times haven’t been published yet. Once they are, they’ll show up here automatically, searchable by day, phase, country or name.`,
+    plan:[["Mon 10/5","Event opens (registration, vet check, training)"],["Wed 10/7","Competition starts"],["Thu 10/8","Competition"],["Fri 10/9","Competition"],["Sat 10/10","Competition"],["Sun 10/11","Final day"]],
+    wd:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], mon:"Oct",
+    slots:n=>`${n} start slots`, compDays:"Competition Oct 7–11", noSlot:"No start slots for this filter.",
+    myEmpty:`No dogs tracked yet. Tap <b>★</b> on any card in Entries or Ranking to follow it here. New scores are marked <b>NEW</b>.`,
+    newBadge:"NEW", nextUp:"Next up", notifyOn:"🔔 Turn on alerts", notifyOk:"🔔 Alerts on", shareFav:"Share my dogs", clearNew:"Clear NEW",
+    toastNew:n=>`${n} new score update(s) for your dogs`,
+    shareTitle:"Share this tracker", shareText:"Send this link — anyone can open it on their phone.",
+    copy:"Copy", copied:"Copied", close:"Close", nativeShare:"Send via apps",
+    favShareTitle:"Share my dogs", favShareText:n=>`This link includes your ${n} tracked dogs. Friends can follow the same dogs in one tap.`,
+    importTitle:"Add tracked dogs", importText:n=>`This link includes ${n} dogs. Add them to your list?`, add:"Add", skip:"Not now", added:n=>`Added ${n} dogs`,
+    notifyDenied:"Notifications are blocked. Allow them in your browser settings.",
+    notifyNote:"Alerts arrive while this page is open.",
+    favAdd:"Track this dog", favDel:"Stop tracking"
+  }
+};
+const JA = {AR:"アルゼンチン",AT:"オーストリア",BE:"ベルギー",CA:"カナダ",CL:"チリ",HR:"クロアチア",CZ:"チェコ",DK:"デンマーク",EE:"エストニア",FI:"フィンランド",FR:"フランス",DE:"ドイツ",GR:"ギリシャ",HU:"ハンガリー",IE:"アイルランド",IL:"イスラエル",IT:"イタリア",JP:"日本",KR:"韓国",KW:"クウェート",NL:"オランダ",NO:"ノルウェー",PL:"ポーランド",PT:"ポルトガル",RO:"ルーマニア",RS:"セルビア",SK:"スロバキア",SI:"スロベニア",ES:"スペイン",SE:"スウェーデン",CH:"スイス",TW:"台湾",TR:"トルコ",UA:"ウクライナ",AE:"アラブ首長国連邦",GB:"イギリス",US:"アメリカ",BR:"ブラジル",BG:"ブルガリア",CN:"中国",LV:"ラトビア",LT:"リトアニア",SG:"シンガポール",MX:"メキシコ",AU:"オーストラリア",ZA:"南アフリカ",LU:"ルクセンブルク",IS:"アイスランド",CO:"コロンビア",TH:"タイ"};
+const ALIAS = {JP:"にほん にっぽん ジャパン nippon",US:"米国 usa america",GB:"英国 uk england",KR:"korea",AE:"uae",TR:"turkey türkiye",DE:"deutschland",CZ:"czechia"};
+const RT_JA = {"excellent":"優秀","very good":"非常に良い","good":"良","satisfactory":"可","insufficient":"不十分","withdrawn":"棄権","disqualification":"失格"};
+
+/* ============ state ============ */
+const LS = (k,v) => v===undefined ? JSON.parse(localStorage.getItem("wusv26_"+k)||"null") : localStorage.setItem("wusv26_"+k, JSON.stringify(v));
+const params = new URLSearchParams(location.search);
+let lang = params.get("lang") || LS("lang") || ((navigator.language||"ja").startsWith("ja") ? "ja" : "en");
+const t = k => I18N[lang][k];
+let DATA = null, P = [], countries = [];
+let state = {q:"", cc:null, view:"list", res:false, day:null, sec:null,
+  fav:new Set(LS("fav")||[]), seen:LS("seen")||{}, fresh:new Set()};
+let online = true;
+
+const flag = cc => cc.toUpperCase().replace(/./g, ch => String.fromCodePoint(127397 + ch.charCodeAt(0)));
+const cname = cc => lang==="ja" ? (JA[cc] || DATA.countries[cc] || cc) : (DATA.countries[cc] || cc);
+const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const COMP_DAY = new Date("2026-10-07T00:00:00");
+const DAYS = ["2026-10-07","2026-10-08","2026-10-09","2026-10-10","2026-10-11"];
+const snap = p => [p.a,p.b,p.c,p.t,p.rt].join("|");
+
+function prepare(){
+  P = DATA.parts.map(p => {
+    const dob = new Date(p.dob+"T00:00:00");
+    let m = (COMP_DAY.getFullYear()-dob.getFullYear())*12 + COMP_DAY.getMonth()-dob.getMonth();
+    if (COMP_DAY.getDate() < dob.getDate()) m--;
+    const hay = [p.cat,p.h,p.d,p.cc,DATA.countries[p.cc]||"",JA[p.cc]||"",ALIAS[p.cc]||"",flag(p.cc)].join(" ").toLowerCase().normalize("NFKC");
+    const sc = [p.a,p.b,p.c].filter(v => v!=null);
+    return {...p, ageY:Math.floor(m/12), ageM:m%12, hay, done:sc.length,
+      sum: p.t!=null ? p.t : (sc.length ? sc.reduce((x,y)=>x+y,0) : null), sched:(DATA.sched||{})[p.cat]||{}};
+  });
+  countries = [...new Set(P.map(p=>p.cc))];
+  const rk = ranked(); const rmap = new Map(rk.map(p=>[p.cat,p.rank]));
+  P.forEach(p => p.rank = rmap.get(p.cat));
+}
+function sortCountries(){
+  countries.sort((a,b)=> a==="JP"?-1 : b==="JP"?1 : cname(a).localeCompare(cname(b), lang));
+}
+// total desc; tie -> C desc (then B, A)
+function ranked(){
+  const r = P.filter(p=>!p.res && p.sum!=null).sort((x,y)=> (y.sum-x.sum) || ((y.c??-1)-(x.c??-1)) || ((y.b??-1)-(x.b??-1)) || ((y.a??-1)-(x.a??-1)));
+  let prev=null, rk=0;
+  r.forEach((p,i)=>{ const key=p.sum+"|"+(p.c??-1); if(key!==prev){rk=i+1;prev=key} p.rank=rk; });
+  return r;
+}
+function match(p, ignoreCc){
+  if (!ignoreCc && state.cc==="★" && !state.fav.has(p.cat)) return false;
+  if (!ignoreCc && state.cc && state.cc!=="★" && p.cc!==state.cc) return false;
+  if (!state.res && p.res && !state.fav.has(p.cat)) return false;
+  if (!state.q) return true;
+  const q = state.q.toLowerCase().normalize("NFKC").trim();
+  const ri = [...q].filter(c=>{const k=c.codePointAt(0);return k>=0x1F1E6&&k<=0x1F1FF});
+  if (ri.length>=2){ const cc = ri.slice(0,2).map(c=>String.fromCharCode(c.codePointAt(0)-127397)).join(""); return p.cc===cc; }
+  return q.split(/\s+/).every(w => p.hay.includes(w));
+}
+function fmtWhen(w){
+  if (!w) return "";
+  const [d,tm] = w.split(" "); const dt = new Date(d+"T00:00:00");
+  return lang==="ja" ? `${dt.getMonth()+1}/${dt.getDate()}(${t("wd")[dt.getDay()]}) ${tm}` : `${t("wd")[dt.getDay()]} ${dt.getMonth()+1}/${dt.getDate()} ${tm}`;
+}
+function rtText(rt){ return lang==="ja" ? (RT_JA[rt.toLowerCase()] || rt) : rt; }
+
+/* ============ render ============ */
+function seg(p,k,flash){
+  const v = p[k.toLowerCase()], w = p.sched[k];
+  return `<div class="seg ${k} ${v!=null?"done":""} ${flash&&v!=null?"flash":""}"><div class="lb"><em>${k}</em>${t("sec")[k]}</div>
+    ${v!=null?`<div class="sc">${v}</div>`:`<div class="sc pend">${t("pend")}</div>`}
+    ${w?`<div class="when">${esc(fmtWhen(w))}</div>`:""}
+    <div class="fill" style="width:${v!=null?Math.max(2,v):0}%"></div></div>`;
+}
+function nextUp(p){
+  const now = new Date();
+  const n = ["A","B","C"].filter(k=>p.sched[k] && p[k.toLowerCase()]==null)
+    .map(k=>({k,w:p.sched[k],d:new Date(p.sched[k].replace(" ","T")+":00+02:00")}))
+    .filter(x=>x.d > new Date(now-3*3600e3)).sort((a,b)=>a.d-b.d)[0];
+  return n ? `<div class="nextup">⏱ ${t("nextUp")}: ${n.k} ${t("sec")[n.k]} · ${esc(fmtWhen(n.w))}</div>` : "";
+}
+function card(p, showRank){
+  const fav = state.fav.has(p.cat), fresh = state.fresh.has(p.cat);
+  const rk = showRank ? (p.rank ? `<div class="rank ${p.rank<=3?"r"+p.rank:""}">${p.rank}</div>` : "") : "";
+  return `<article class="card ${p.res?"res":""} ${fresh?"new":""}">${fresh?`<span class="badge">${t("newBadge")}</span>`:""}
+    <div class="row1">${rk}
+      <div class="who">
+        <div class="dog">${esc(p.d)}</div>
+        <div class="hdl">${flag(p.cc)} ${esc(p.h)}</div>
+        <div class="tags"><span class="tag cat">${esc(p.cat)}${p.st?" · #"+p.st:""}</span>
+          <span class="tag sx-${p.sx}">${p.sx==="F"?t("female"):t("male")}</span>
+          <span class="tag">${t("age")(p.ageY,p.ageM)}</span>
+          ${p.res?`<span class="tag rsv">${t("reserve")}</span>`:""}</div>
+      </div>
+      <div class="tot"><b>${p.sum??"—"}</b><span>${t("ofN")(p.done)}</span></div>
+      <button class="star" data-fav="${esc(p.cat)}" aria-pressed="${fav}" aria-label="${fav?t("favDel"):t("favAdd")}">★</button>
+    </div>
+    ${p.res?"":`<div class="trail">${seg(p,"A",fresh)}${seg(p,"B",fresh)}${seg(p,"C",fresh)}</div>`}
+    ${fav?nextUp(p):""}
+    ${p.rt?`<div class="rating ${/insuff|disq|withdr/i.test(p.rt)?"bad":""}">${t("rating")}：${esc(rtText(p.rt))}</div>`:""}
+  </article>`;
+}
+function renderChips(){
+  document.getElementById("chips").innerHTML =
+    `<button class="chip" data-cc="" aria-pressed="${!state.cc}">${t("all")}</button>` +
+    `<button class="chip" data-cc="★" aria-pressed="${state.cc==="★"}">${t("fav")} ${state.fav.size||""}</button>` +
+    countries.map(cc=>`<button class="chip" data-cc="${cc}" aria-pressed="${state.cc===cc}"><span class="f">${flag(cc)}</span>${esc(cname(cc))}</button>`).join("");
+}
+function renderList(){
+  const list = P.filter(p=>match(p));
+  const by = {}; list.forEach(p=>(by[p.cc]=by[p.cc]||[]).push(p));
+  const order = countries.filter(c=>by[c]);
+  setCount(t("dogs")(list.length, order.length));
+  el("v-list").innerHTML = list.length ? order.map(cc=>{
+    const L = DATA.leaders[cc];
+    return `<div class="group-h"><span class="f">${flag(cc)}</span>${esc(cname(cc))}<small>${lang==="ja"?esc(DATA.countries[cc]):""}${L?`${lang==="ja"?"<br>":""}TL: ${esc(L.join(", "))}`:""}</small></div>` + by[cc].map(p=>card(p,true)).join("");
+  }).join("") : `<div class="empty">${t("none")}</div>`;
+}
+function strip(){
+  const act = P.filter(p=>!p.res), c = k => act.filter(p=>p[k]!=null).length;
+  return `<div class="strip"><div><b style="color:var(--a)">${c("a")}</b><span>A ${t("done")}</span></div><div><b style="color:var(--b)">${c("b")}</b><span>B ${t("done")}</span></div><div><b style="color:var(--c)">${c("c")}</b><span>C ${t("done")}</span></div><div><b>${act.length}</b><span>${t("entries")}</span></div></div>`;
+}
+function renderRank(){
+  const all = ranked(); const list = all.filter(p=>match(p));
+  setCount(t("rankN")(list.length));
+  let body;
+  if (!all.length) body = `<div class="note">${t("noScores")}<br><a href="https://wusv2026.fci.systems/results.php" target="_blank" rel="noopener">${t("openRes")}</a></div>` + P.filter(p=>!p.res && match(p)).map(p=>card(p,false)).join("");
+  else body = list.length ? list.map(p=>card(p,true)).join("") : `<div class="empty">${t("none")}</div>`;
+  el("v-rank").innerHTML = strip() + body;
+}
+function renderMy(){
+  const list = P.filter(p=>state.fav.has(p.cat) && match(p,true));
+  list.sort((a,b)=> (state.fresh.has(b.cat)-state.fresh.has(a.cat)) || ((a.rank??1e9)-(b.rank??1e9)) || a.cat.localeCompare(b.cat));
+  setCount(t("myN")(state.fav.size));
+  const perm = ("Notification" in window) ? Notification.permission : "unsupported";
+  const tools = state.fav.size ? `<div class="favtools">
+      ${perm!=="unsupported"?`<button class="chip" id="notifyBtn" aria-pressed="${perm==="granted"}">${perm==="granted"?t("notifyOk"):t("notifyOn")}</button>`:""}
+      <button class="chip" id="shareFavBtn">${t("shareFav")}</button>
+      ${state.fresh.size?`<button class="chip" id="clearNewBtn">${t("clearNew")}</button>`:""}
+    </div>` : "";
+  el("v-my").innerHTML = tools + (list.length ? list.map(p=>card(p,true)).join("") : `<div class="note">${t("myEmpty")}</div>`);
+}
+function renderSched(){
+  const today = new Date().toISOString().slice(0,10);
+  const days = `<div class="days">${DAYS.map(d=>{const dt=new Date(d+"T00:00:00");return `<button class="day ${d===today?"today":""}" data-day="${d}" aria-pressed="${state.day===d}"><b>${dt.getDate()}</b><span>${t("mon")} · ${t("wd")[dt.getDay()]}</span></button>`}).join("")}</div>`;
+  const secs = `<div class="secs">${["A","B","C"].map(k=>`<button class="chip" data-sec="${k}" aria-pressed="${state.sec===k}">${k} ${t("sec")[k]}</button>`).join("")}</div>`;
+  const slots = [];
+  P.filter(p=>match(p)).forEach(p=>["A","B","C"].forEach(k=>{
+    const w = p.sched[k]; if(!w) return;
+    const [date,time] = w.split(" ");
+    if (state.day && date!==state.day) return;
+    if (state.sec && state.sec!==k) return;
+    slots.push({p,k,date,time,w});
+  }));
+  slots.sort((x,y)=>x.w.localeCompare(y.w));
+  let body;
+  if (!Object.keys(DATA.sched||{}).length){
+    setCount(t("compDays"));
+    body = `<div class="note">${t("noSched")}<br><a href="https://wusv2026.fci.systems/shedule1.php" target="_blank" rel="noopener">${t("openSched")}</a></div>
+      <div class="plan">${t("plan").map(([a,b])=>`<div><b>${a}</b>${b}</div>`).join("")}</div>`;
+  } else {
+    setCount(t("slots")(slots.length));
+    body = slots.length ? slots.map(s=>`<div class="slot"><time>${esc(s.time)}</time><span class="sb ${s.k}">${s.k}</span><div class="who"><b>${state.fav.has(s.p.cat)?"★ ":""}${flag(s.p.cc)} ${esc(s.p.d)}</b><br>${esc(s.p.h)} · ${esc(s.p.cat)}${state.day?"":" · "+esc(fmtWhen(s.w).split(" ")[0])}</div></div>`).join("") : `<div class="empty">${t("noSlot")}</div>`;
+  }
+  el("v-sched").innerHTML = days + secs + body;
+}
+const el = id => document.getElementById(id);
+const setCount = s => el("count").textContent = s;
+
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i]").forEach(n=>{ const v=t(n.dataset.i); if(typeof v==="string") n.textContent=v; });
+  document.querySelectorAll("[data-lang]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.lang===lang));
+  el("q").placeholder = t("ph");
+  if (DATA) sortCountries();
+}
+function render(){
+  if (!DATA){ setCount(t("loading")); return; }
+  renderChips();
+  ({list:renderList,rank:renderRank,my:renderMy,sched:renderSched})[state.view]();
+  el("qx").style.display = state.q ? "block" : "none";
+  el("upd").textContent = DATA.updated || "—";
+  el("liveTxt").textContent = online ? t("live") : t("offline");
+  el("live").classList.toggle("off", !online);
+  const d = el("myDot"); d.hidden = !state.fresh.size; d.textContent = state.fresh.size;
+}
+
+/* ============ live data ============ */
+async function load(first){
+  try{
+    const r = await fetch("data.json?_=" + Date.now(), {cache:"no-store"});
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    online = true;
+    if (!first && DATA && d.updated === DATA.updated) { render(); return; }
+    DATA = d; LS("cache", d); prepare(); sortCountries(); detectChanges(first);
+  }catch(e){
+    online = false;
+    if (!DATA){ const c = LS("cache"); if (c){ DATA = c; prepare(); sortCountries(); } }
+  }
+  render();
+}
+function detectChanges(first){
+  let n = 0;
+  P.forEach(p=>{
+    if (!state.fav.has(p.cat)) return;
+    const s = snap(p);
+    if (state.seen[p.cat] === undefined){ state.seen[p.cat] = s; return; }
+    if (state.seen[p.cat] !== s){ if (!state.fresh.has(p.cat)) n++; state.fresh.add(p.cat); }
+  });
+  LS("seen", state.seen); LS("freshList", [...state.fresh]);
+  if (n){
+    toast(t("toastNew")(n));
+    if (!first && "Notification" in window && Notification.permission==="granted"){
+      const names = P.filter(p=>state.fresh.has(p.cat)).slice(0,3).map(p=>`${flag(p.cc)} ${p.d} ${p.sum??""}`).join("\n");
+      try{ new Notification("WUSV 2026", {body: t("toastNew")(n) + "\n" + names, tag:"wusv26"}); }catch(e){}
+    }
+  }
+}
+function markSeen(){
+  P.forEach(p=>{ if (state.fav.has(p.cat)) state.seen[p.cat] = snap(p); });
+  state.fresh.clear(); LS("seen", state.seen); LS("freshList", []);
+}
+function toast(msg){ const x=el("toast"); x.textContent=msg; x.classList.add("on"); clearTimeout(toast.t); toast.t=setTimeout(()=>x.classList.remove("on"),3200); }
+
+/* ============ share ============ */
+const baseUrl = () => location.origin + location.pathname;
+function openSheet(title, text, url){
+  const qr = "https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=8&data=" + encodeURIComponent(url);
+  el("sheetBody").innerHTML = `<h2>${esc(title)}</h2><p>${esc(text)}</p>
+    <div class="url"><input id="shareUrl" readonly value="${esc(url)}"><button class="pbtn" id="copyBtn">${t("copy")}</button></div>
+    <img src="${qr}" alt="QR" loading="lazy">
+    <div class="row">${navigator.share?`<button class="pbtn" id="nativeBtn">${t("nativeShare")}</button>`:""}<button class="pbtn ghost" id="closeBtn">${t("close")}</button></div>`;
+  el("sheet").classList.add("on");
+  el("copyBtn").onclick = async ()=>{ try{ await navigator.clipboard.writeText(url); }catch(e){ el("shareUrl").select(); document.execCommand("copy"); } toast(t("copied")); };
+  if (navigator.share) el("nativeBtn").onclick = ()=> navigator.share({title:"WUSV 2026 Tracker", text:title, url}).catch(()=>{});
+  el("closeBtn").onclick = closeSheet;
+}
+function closeSheet(){ el("sheet").classList.remove("on"); }
+function importPrompt(cats){
+  const add = cats.filter(c=>!state.fav.has(c));
+  if (!add.length) return;
+  el("sheetBody").innerHTML = `<h2>${t("importTitle")}</h2><p>${t("importText")(add.length)}</p>
+    <p>${add.map(c=>{const p=P.find(x=>x.cat===c);return p?`${flag(p.cc)} ${esc(p.d)}`:esc(c)}).join("<br>")}</p>
+    <div class="row"><button class="pbtn" id="impYes">${t("add")}</button><button class="pbtn ghost" id="impNo">${t("skip")}</button></div>`;
+  el("sheet").classList.add("on");
+  el("impYes").onclick = ()=>{ add.forEach(c=>{ state.fav.add(c); const p=P.find(x=>x.cat===c); if(p) state.seen[c]=snap(p); }); LS("fav",[...state.fav]); LS("seen",state.seen); closeSheet(); toast(t("added")(add.length)); switchView("my"); };
+  el("impNo").onclick = closeSheet;
+  history.replaceState(null,"",baseUrl()+location.hash);
+}
+
+/* ============ events ============ */
+function switchView(v){
+  if (state.view==="my" && v!=="my") markSeen();
+  state.view = v;
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", b.dataset.v===v));
+  document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on", s.id==="v-"+v));
+  history.replaceState(null,"",location.pathname+location.search+"#"+v);
+  render(); window.scrollTo({top:0});
+}
+el("q").addEventListener("input", e=>{ state.q=e.target.value; render(); });
+el("qx").addEventListener("click", ()=>{ el("q").value=""; state.q=""; render(); el("q").focus(); });
+el("showRes").addEventListener("change", e=>{ state.res=e.target.checked; render(); });
+el("sheet").addEventListener("click", e=>{ if (e.target.id==="sheet") closeSheet(); });
+el("shareBtn").addEventListener("click", ()=> openSheet(t("shareTitle"), t("shareText"), baseUrl() + (lang==="en"?"?lang=en":"")));
+document.addEventListener("click", async e=>{
+  const L = e.target.closest("[data-lang]"); if (L){ lang=L.dataset.lang; LS("lang",lang); applyLang(); render(); return; }
+  const c = e.target.closest("[data-cc]"); if (c){ state.cc = c.dataset.cc || null; render(); return; }
+  const f = e.target.closest("[data-fav]"); if (f){
+    const k=f.dataset.fav;
+    if (state.fav.has(k)){ state.fav.delete(k); state.fresh.delete(k); delete state.seen[k]; }
+    else { state.fav.add(k); const p=P.find(x=>x.cat===k); if(p) state.seen[k]=snap(p); }
+    LS("fav",[...state.fav]); LS("seen",state.seen); render(); return; }
+  const d = e.target.closest("[data-day]"); if (d){ state.day = state.day===d.dataset.day?null:d.dataset.day; render(); return; }
+  const s = e.target.closest("[data-sec]"); if (s){ state.sec = state.sec===s.dataset.sec?null:s.dataset.sec; render(); return; }
+  const tb = e.target.closest("nav.tabs button"); if (tb){ switchView(tb.dataset.v); return; }
+  if (e.target.id==="clearNewBtn"){ markSeen(); render(); return; }
+  if (e.target.id==="shareFavBtn"){ openSheet(t("favShareTitle"), t("favShareText")(state.fav.size), baseUrl()+"?fav="+[...state.fav].join(",")+(lang==="en"?"&lang=en":"")+"#my"); return; }
+  if (e.target.id==="notifyBtn"){
+    if (Notification.permission==="denied"){ toast(t("notifyDenied")); return; }
+    const r = await Notification.requestPermission(); render(); if (r==="granted") toast(t("notifyNote")); return; }
+});
+document.addEventListener("visibilitychange", ()=>{ if (!document.hidden) load(false); });
+
+/* ============ boot ============ */
+state.fresh = new Set(LS("freshList")||[]);
+applyLang();
+const h0 = location.hash.slice(1);
+if (["list","rank","my","sched"].includes(h0)) { state.view=h0; document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", b.dataset.v===h0)); document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on", s.id==="v-"+h0)); }
+render();
+load(true).then(()=>{
+  const f = params.get("fav"); if (f) importPrompt(f.split(",").map(x=>x.trim()).filter(Boolean));
+});
+setInterval(()=>{ if (!document.hidden) load(false); }, 60000);
+</script>
+</body>
+</html>

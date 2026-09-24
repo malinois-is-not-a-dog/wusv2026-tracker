@@ -1,0 +1,35 @@
+name: Update results
+
+on:
+  schedule:
+    # 大会期間（10/5〜10/12 UTC）は5分おき。GitHubの混雑で数分遅れることがあります
+    - cron: "*/5 * 5-12 10 *"
+    # それ以外は1日4回（出場者リストの変更を拾う）
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch official data
+        run: python3 scripts/update.py
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- data.json; then echo "no change"; exit 0; fi
+          git config user.name "wusv-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git commit -m "data: $(date -u +'%Y-%m-%d %H:%M') UTC"
+          git push
