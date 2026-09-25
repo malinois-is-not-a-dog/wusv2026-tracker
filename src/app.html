@@ -81,7 +81,7 @@ const I18N = {
     dogs:(n,c)=>`${n} 頭 / ${c} か国`, rankN:n=>`順位対象 ${n} 頭`, myN:n=>`マイ選手 ${n} 頭`,
     male:"♂ オス", female:"♀ メス", age:(y,m)=>`${y}歳${m}ヶ月`, reserve:"補欠",
     sec:{A:"追求",B:"服従",C:"防衛"}, pend:"未実施", ofN:n=>`${n}/3 科目`,
-    rating:"評価", done:"済", entries:"出場頭数",
+    rating:"評価", done:"済", st:{W:"棄権",D:"失格",T:"中止",N:"欠場"}, stNote:"順位対象外", drawNo:"出走順", openCard:"選手データを見る", xSched:"取消", entries:"出場頭数",
     none:"該当する選手がいません。検索語を短くするか、国を「すべて」に戻してください。",
     noScores:`まだ成績が出ていません（競技は <b>10月7日（水）</b>開始）。公式に成績が掲載されると、数分以内にここへ自動で反映されます。`,
     openRes:"公式リザルトを開く →", openSched:"公式スケジュールを開く →",
@@ -109,7 +109,7 @@ const I18N = {
     dogs:(n,c)=>`${n} dogs / ${c} countries`, rankN:n=>`${n} ranked`, myN:n=>`${n} tracked`,
     male:"♂ Male", female:"♀ Female", age:(y,m)=>`${y}y ${m}m`, reserve:"Reserve",
     sec:{A:"Tracking",B:"Obedience",C:"Protection"}, pend:"Pending", ofN:n=>`${n}/3 phases`,
-    rating:"Rating", done:"done", entries:"Entries",
+    rating:"Rating", done:"done", st:{W:"Withdrawn",D:"Disqualified",T:"Terminated",N:"Absent"}, stNote:"Not ranked", drawNo:"Draw", openCard:"View competitor", xSched:"Cancelled", entries:"Entries",
     none:"No matches. Try a shorter search or reset the country filter to “All”.",
     noScores:`No scores yet — competition starts <b>Wed, Oct 7</b>. Scores appear here automatically within minutes of being posted officially.`,
     openRes:"Open official results →", openSched:"Open official schedule →",
@@ -148,7 +148,7 @@ const cname = cc => lang==="ja" ? (JA[cc] || DATA.countries[cc] || cc) : (DATA.c
 const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const COMP_DAY = new Date("2026-10-07T00:00:00");
 const DAYS = ["2026-10-07","2026-10-08","2026-10-09","2026-10-10","2026-10-11"];
-const snap = p => [p.a,p.b,p.c,p.t,p.rt].join("|");
+const snap = p => [p.a,p.b,p.c,p.t,p.rt,p.ss,p.ax,p.bx,p.cx].join("|");
 
 function prepare(){
   P = DATA.parts.map(p => {
@@ -158,7 +158,7 @@ function prepare(){
     const hay = [p.cat,p.h,p.d,p.cc,DATA.countries[p.cc]||"",JA[p.cc]||"",ALIAS[p.cc]||"",flag(p.cc)].join(" ").toLowerCase().normalize("NFKC");
     const sc = [p.a,p.b,p.c].filter(v => v!=null);
     return {...p, ageY:Math.floor(m/12), ageM:m%12, hay, done:sc.length,
-      sum: p.t!=null ? p.t : (sc.length ? sc.reduce((x,y)=>x+y,0) : null), sched:(DATA.sched||{})[p.cat]||{}};
+      sum: p.t!=null ? p.t : (sc.length ? sc.reduce((x,y)=>x+y,0) : null), sched:(DATA.sched||{})[p.cat]||{}, ss:p.ss || (((DATA.sched||{})[p.cat]||{}).x && !sc.length ? "W" : null)};
   });
   countries = [...new Set(P.map(p=>p.cc))];
   const rk = ranked(); const rmap = new Map(rk.map(p=>[p.cat,p.rank]));
@@ -169,7 +169,7 @@ function sortCountries(){
 }
 // total desc; tie -> C desc (then B, A)
 function ranked(){
-  const r = P.filter(p=>!p.res && p.sum!=null).sort((x,y)=> (y.sum-x.sum) || ((y.c??-1)-(x.c??-1)) || ((y.b??-1)-(x.b??-1)) || ((y.a??-1)-(x.a??-1)));
+  const r = P.filter(p=>!p.res && !p.ss && p.sum!=null).sort((x,y)=> (y.sum-x.sum) || ((y.c??-1)-(x.c??-1)) || ((y.b??-1)-(x.b??-1)) || ((y.a??-1)-(x.a??-1)));
   let prev=null, rk=0;
   r.forEach((p,i)=>{ const key=p.sum+"|"+(p.c??-1); if(key!==prev){rk=i+1;prev=key} p.rank=rk; });
   return r;
@@ -192,10 +192,26 @@ function fmtWhen(w){
 function rtText(rt){ return lang==="ja" ? (RT_JA[rt.toLowerCase()] || rt) : rt; }
 
 /* ============ render ============ */
+function stLabel(code){ return t("st")[code] || code; }
+// 状態をどの科目欄に出すか：数字でない公式表記があればそれ。無ければ、失格は空欄すべて、棄権・中止は最初の空欄（出番順）
+function statusCells(p){
+  const out = {};
+  ["A","B","C"].forEach(k=>{ const raw = p[k.toLowerCase()+"x"]; if (raw) out[k] = {txt:raw, code:p.ss}; });
+  if (!p.ss) return out;
+  const blank = ["A","B","C"].filter(k=>p[k.toLowerCase()]==null && !out[k])
+    .sort((x,y)=>(p.sched[x]||"9"+x).localeCompare(p.sched[y]||"9"+y));
+  if (p.ss==="D") blank.forEach(k=>out[k]={txt:stLabel("D"),code:"D"});
+  else if (!Object.keys(out).length && blank.length){ out[blank[0]]={txt:stLabel(p.ss),code:p.ss}; blank.slice(1).forEach(k=>out[k]={txt:"—",code:"-"}); }
+  else blank.forEach(k=>out[k]={txt:"—",code:"-"});
+  return out;
+}
 function seg(p,k,flash){
-  const v = p[k.toLowerCase()], w = p.sched[k];
-  return `<div class="seg ${k} ${v!=null?"done":""} ${flash&&v!=null?"flash":""}"><div class="lb"><em>${k}</em>${t("sec")[k]}</div>
-    ${v!=null?`<div class="sc">${v}</div>`:`<div class="sc pend">${t("pend")}</div>`}
+  const v = p[k.toLowerCase()], w = p.sched[k], sx = statusCells(p)[k];
+  const main = v!=null ? `<div class="sc">${v}</div>`
+    : sx ? `<div class="sc stx ${sx.code==="-"?"dash":""}">${esc(sx.txt)}</div>`
+    : `<div class="sc pend">${t("pend")}</div>`;
+  return `<div class="seg ${k} ${v!=null?"done":""} ${sx&&v==null&&sx.code!=="-"?"stc":""} ${flash&&v!=null?"flash":""}"><div class="lb"><em>${k}</em>${t("sec")[k]}</div>
+    ${main}
     ${w?`<div class="when">${esc(fmtWhen(w))}</div>`:""}
     <div class="fill" style="width:${v!=null?Math.max(2,v):0}%"></div></div>`;
 }
@@ -209,17 +225,17 @@ function nextUp(p){
 function card(p, showRank){
   const fav = state.fav.has(p.cat), fresh = state.fresh.has(p.cat);
   const rk = showRank ? (p.rank ? `<div class="rank ${p.rank<=3?"r"+p.rank:""}">${p.rank}</div>` : "") : "";
-  return `<article class="card ${p.res?"res":""} ${fresh?"new":""}">${fresh?`<span class="badge">${t("newBadge")}</span>`:""}
+  return `<article class="card ${p.res?"res":""} ${fresh?"new":""} ${p.ss?"out":""}" id="c-${esc(p.cat)}">${fresh?`<span class="badge">${t("newBadge")}</span>`:""}
     <div class="row1">${rk}
       <div class="who">
         <div class="hdl">${flag(p.cc)} ${esc(p.h)}</div>
         <div class="dog">🐕 ${esc(p.d)}</div>
-        <div class="tags"><span class="tag cat">${esc(p.cat)}${p.st?" · #"+p.st:""}</span>
+        <div class="tags"><span class="tag cat">${esc(p.cat)}</span>${(p.st||p.sched.no)?`<span class="tag draw">${t("drawNo")} #${p.st||p.sched.no}</span>`:""}
           <span class="tag sx-${p.sx}">${p.sx==="F"?t("female"):t("male")}</span>
           <span class="tag">${t("age")(p.ageY,p.ageM)}</span>
           ${p.res?`<span class="tag rsv">${t("reserve")}</span>`:""}</div>
       </div>
-      <div class="tot"><b>${p.sum??"—"}</b><span>${t("ofN")(p.done)}</span></div>
+      <div class="tot">${p.ss?`<b class="stt">${esc(stLabel(p.ss))}</b><span>${p.sum!=null?p.sum+" · ":""}${t("stNote")}</span>`:`<b>${p.sum??"—"}</b><span>${t("ofN")(p.done)}</span>`}</div>
       <button class="star" data-fav="${esc(p.cat)}" aria-pressed="${fav}" aria-label="${fav?t("favDel"):t("favAdd")}">★</button>
     </div>
     ${p.res?"":`<div class="trail">${seg(p,"A",fresh)}${seg(p,"B",fresh)}${seg(p,"C",fresh)}</div>`}
@@ -255,7 +271,10 @@ function renderRank(){
   setCount(t("rankN")(list.length));
   let body;
   if (!all.length) body = `<div class="note">${t("noScores")}<br><a href="https://wusv2026.fci.systems/results.php" target="_blank" rel="noopener">${t("openRes")}</a></div>` + P.filter(p=>!p.res && match(p)).map(p=>card(p,false)).join("");
-  else body = list.length ? list.map(p=>card(p,true)).join("") : `<div class="empty">${t("none")}</div>`;
+  else {
+    const outs = P.filter(p=>!p.res && p.ss && match(p)).sort((a,b)=>"WTND".indexOf(a.ss)-"WTND".indexOf(b.ss) || (b.sum??-1)-(a.sum??-1));
+    body = (list.length||outs.length) ? list.map(p=>card(p,true)).join("") + outs.map(p=>card(p,false)).join("") : `<div class="empty">${t("none")}</div>`;
+  }
   el("v-rank").innerHTML = strip() + body;
 }
 function renderMy(){
@@ -290,7 +309,7 @@ function renderSched(){
       <div class="plan">${t("plan").map(([a,b])=>`<div><b>${a}</b>${b}</div>`).join("")}</div>`;
   } else {
     setCount(t("slots")(slots.length));
-    body = slots.length ? slots.map(s=>`<div class="slot"><time>${esc(s.time)}</time><span class="sb ${s.k}">${s.k}</span><div class="who"><b>${state.fav.has(s.p.cat)?"★ ":""}${flag(s.p.cc)} ${esc(s.p.h)}</b><br>🐕 ${esc(s.p.d)} · ${esc(s.p.cat)}${state.day?"":" · "+esc(fmtWhen(s.w).split(" ")[0])}</div></div>`).join("") : `<div class="empty">${t("noSlot")}</div>`;
+    body = slots.length ? slots.map(s=>`<button class="slot ${s.p.ss?"xs":""}" data-open="${esc(s.p.cat)}"><time>${esc(s.time)}</time><span class="sb ${s.k}">${s.k}</span><div class="who"><b>${state.fav.has(s.p.cat)?"★ ":""}${flag(s.p.cc)} ${esc(s.p.h)}</b><br>🐕 ${esc(s.p.d)} · ${esc(s.p.cat)}${s.p.sched.no?" · #"+s.p.sched.no:""}${state.day?"":" · "+esc(fmtWhen(s.w).split(" ")[0])}${s.p.ss?` · <span class="xtag">${esc(stLabel(s.p.ss))}</span>`:""}</div><span class="go">›</span></button>`).join("") : `<div class="empty">${t("noSlot")}</div>`;
   }
   el("v-sched").innerHTML = days + secs + body;
 }
@@ -366,6 +385,14 @@ function openSheet(title, text, url){
   if (navigator.share) el("nativeBtn").onclick = ()=> navigator.share({title:"WUSV 2026 Tracker", text:title, url}).catch(()=>{});
   el("closeBtn").onclick = closeSheet;
 }
+function openCard(cat){
+  const p = P.find(x=>x.cat===cat); if (!p) return;
+  const url = baseUrl() + "?p=" + encodeURIComponent(cat) + (lang==="en"?"&lang=en":"");
+  el("sheetBody").innerHTML = card(p,true) + `<div class="row"><button class="pbtn" id="cardShare">${t("share")}</button><button class="pbtn ghost" id="closeBtn">${t("close")}</button></div>`;
+  el("sheet").classList.add("on");
+  el("closeBtn").onclick = closeSheet;
+  el("cardShare").onclick = ()=> openSheet(`${flag(p.cc)} ${p.h} / ${p.d}`, t("shareText"), url);
+}
 function closeSheet(){ el("sheet").classList.remove("on"); }
 function importPrompt(cats){
   const add = cats.filter(c=>!state.fav.has(c));
@@ -402,6 +429,7 @@ document.addEventListener("click", async e=>{
     if (state.fav.has(k)){ state.fav.delete(k); state.fresh.delete(k); delete state.seen[k]; }
     else { state.fav.add(k); const p=P.find(x=>x.cat===k); if(p) state.seen[k]=snap(p); }
     LS("fav",[...state.fav]); LS("seen",state.seen); render(); return; }
+  const o = e.target.closest("[data-open]"); if (o){ openCard(o.dataset.open); return; }
   const d = e.target.closest("[data-day]"); if (d){ state.day = state.day===d.dataset.day?null:d.dataset.day; render(); return; }
   const s = e.target.closest("[data-sec]"); if (s){ state.sec = state.sec===s.dataset.sec?null:s.dataset.sec; render(); return; }
   const tb = e.target.closest("nav.tabs button"); if (tb){ switchView(tb.dataset.v); return; }
@@ -425,6 +453,7 @@ const h0 = location.hash.slice(1);
 if (["list","rank","my","sched"].includes(h0)) { state.view=h0; document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", b.dataset.v===h0)); document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on", s.id==="v-"+h0)); }
 render();
 load(true).then(()=>{
+  const pc = params.get("p"); if (pc) openCard(pc);
   const f = params.get("fav"); if (f) importPrompt(f.split(",").map(x=>x.trim()).filter(Boolean));
 });
 setInterval(()=>{ if (!document.hidden) load(false); }, 60000);

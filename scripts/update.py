@@ -22,6 +22,20 @@ def post(url, fields):
     req = urllib.request.Request(url, data=body.encode(), headers={**UA, "Content-Type": f"multipart/form-data; boundary={b}"})
     return urllib.request.urlopen(req, timeout=60).read().decode("utf-8", "replace")
 
+# 棄権・失格・中止などの表記（大会ごとに違う表記・言語を吸収）
+STATUS = [
+    ("W", r"withdr|zur(ü|ue)ckgez|retir|\bwd\b|\bret\b|forfeit|verzicht"),
+    ("D", r"disq|\bdis\b|\bdq\b|\bdsq\b|ausschluss|\bdisk"),
+    ("T", r"termin|abbruch|abgebr|abandon|abort|\babb\b|\babr\b|\bterm\b|stopped|break off"),
+    ("N", r"absent|not present|no show|nicht angetr|\bn\.?a\.?\b|\bdns\b|n\.?\s?b\.?"),
+]
+def status_code(text):
+    t = (text or "").strip().lower()
+    if not t: return None
+    for code, pat in STATUS:
+        if re.search(pat, t): return code
+    return None
+
 def num(x):
     try: return int(x)
     except Exception: return None
@@ -55,26 +69,46 @@ def results():
     return out
 
 def schedule(parts):
-    """shedule1.php を読み、WUSV 2026 の出場者と一致する場合だけ採用する（別大会のリストを誤って取り込まない）"""
+    """抽選後の公式スタートリストを各選手に結び付ける。
+    shedule1.php: 抽選番号・A/B/C の日時（全体の出番表）
+    shedule2.php: スタジアム (B/C) の日別出番表。最終日などで順番が変わることがあるので、こちらを優先
+    どちらも WUSV 2026 の出場者と8割以上一致したときだけ採用（別大会のリストを誤って取り込まない）"""
+    byc = {p["cat"]: p for p in parts}
+    out = {}
     try: s = get(BASE + "/shedule1.php")
     except Exception as e:
         print("schedule fetch failed:", e); return {}
-    byc = {p["cat"]: p for p in parts}
+    s = re.sub(r"<!--.*?-->", "", s, flags=re.S)
     rows = re.findall(r"<tr>(<td nowrap class=\"text-center align-middle\">\d+\.</td>.*?)</tr>", s, re.S)
-    sched, hit = {}, 0
+    hit = 0
     for r in rows:
         c = [T(x) for x in re.findall(r"<td[^>]*>(.*?)</td>", r, re.S)]
         if len(c) < 6: continue
-        cat, hd = c[1], c[2]
-        if cat in byc and byc[cat]["h"] == hd: hit += 1
-        e = {}
+        cat = c[1]
+        if cat in byc and byc[cat]["h"] == c[2]: hit += 1
+        e = {"no": num(c[0].rstrip("."))}
+        if "<del>" in r: e["x"] = 1  # 取り消し線 = 棄権・出場取り消し
         for k, v in zip("ABC", c[3:6]):
             m = re.match(r"(\w+)\s+(\d{1,2}:\d{2})", v)
             if m and m.group(1) in DAYMAP: e[k] = f"{DAYMAP[m.group(1)]} {m.group(2)}"
-        if e: sched[cat] = e
+        out[cat] = e
     ratio = hit / len(rows) if rows else 0
-    print(f"schedule rows={len(rows)} match={hit} ({ratio:.0%})")
-    return sched if ratio >= 0.8 else {}
+    print(f"shedule1 rows={len(rows)} match={hit} ({ratio:.0%})")
+    if ratio < 0.8: return {}
+    try:
+        s2 = re.sub(r"<!--.*?-->", "", get(BASE + "/shedule2.php"), flags=re.S)
+        n2 = 0
+        for sec in re.split(r'<div class="card-header"><h3>', s2)[1:]:
+            day = DAYMAP.get(sec.split("<", 1)[0].strip())
+            if not day: continue
+            for part, rest in re.findall(r'<tr><td nowrap class="text-center align-middle">([ABC])</td>(.*?)</tr>', sec, re.S):
+                c = [T(x) for x in re.findall(r"<td[^>]*>(.*?)</td>", rest, re.S)]
+                if len(c) >= 3 and c[2] in out and re.match(r"\d{1,2}:\d{2}$", c[0]):
+                    out[c[2]][part] = f"{day} {c[0]}"; out[c[2]].setdefault("std", []).append(part); n2 += 1
+        print(f"shedule2 stadium slots applied={n2}")
+    except Exception as e:
+        print("stadium list skipped:", e)
+    return out
 
 def validate(parts, res):
     """公式の形式が変わったら失敗させる → GitHubから所有者にメールが届く。data.json は上書きしない"""
@@ -88,7 +122,6 @@ def validate(parts, res):
         for k, v in (("A", a), ("B", b), ("C", cc)):
             if v is not None and not 0 <= v <= 100: errs.append(f"{cat} {k}={v} out of range")
         if None not in (a, b, cc, t) and a + b + cc != t: errs.append(f"{cat} total {t} != {a}+{b}+{cc}")
-        if c[9] and t is None: errs.append(f"{cat} total not numeric: {c[9]!r}")
     if errs:
         print("VALIDATION FAILED:"); [print(" -", e) for e in errs[:30]]
         sys.exit(1)
@@ -99,9 +132,19 @@ def main():
     validate(parts, res)
     for p in parts:
         c = res.get(p["cat"])
-        p["st"] = num(c[1]) if c else None
-        for k, ix in (("a", 6), ("b", 7), ("c", 8), ("t", 9)): p[k] = num(c[ix]) if c else None
+        p["st"] = num(c[1]) if c else None  # Start No.（抽選番号）
+        for k, ix in (("a", 6), ("b", 7), ("c", 8), ("t", 9)):
+            v = c[ix] if c else ""
+            p[k] = num(v)
+            if p[k] is None and v and v not in ("-", "—"):
+                p[k + "x"] = v  # 数字でない表記（DIS / Abbruch / 0* など）はそのまま保持
         p["rt"] = c[10] if c else ""
+        p["pl"] = c[11] if c and c[11] not in ("-", "") else ""
+        # 状態：評価欄 → 各科目欄 → 総合欄 の順で判定
+        code = status_code(p["rt"])
+        for k in ("ax", "bx", "cx", "tx"):
+            code = code or status_code(p.get(k, ""))
+        if code: p["ss"] = code
     sched = schedule(parts)
     body = dict(countries=names, leaders=leaders, parts=parts, sched=sched)
     old = {}

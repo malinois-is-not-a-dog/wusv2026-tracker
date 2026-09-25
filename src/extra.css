@@ -51,3 +51,16 @@ footer b{color:var(--ink2);font-weight:700}
 .ccsel select{flex:1;min-width:0;border:0;background:transparent;appearance:none;-webkit-appearance:none;font-size:16px;font-weight:500;outline:0;padding-right:18px;height:100%;text-overflow:ellipsis}
 .ccsel svg{position:absolute;right:10px;pointer-events:none;opacity:.6}
 .filters .chip{height:42px;border-radius:12px;padding:0 12px;font-size:13.5px}
+
+.seg .sc.stx{font-size:15px;font-weight:700;color:var(--c);padding-top:2px;letter-spacing:.02em}
+.seg .sc.stx.dash{color:var(--mute)}
+.seg.stc{background:repeating-linear-gradient(135deg,#FBE9E2 0 6px,#F6DCD1 6px 12px)}
+.tot b.stt{font-size:20px;color:var(--c);font-family:var(--body);font-weight:700}
+.card.out .hdl,.card.out .dog{opacity:.75}
+.tag.draw{background:var(--ink);color:#fff;font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.03em}
+button.slot{width:100%;border:0;text-align:left;cursor:pointer}
+.slot .go{margin-left:auto;font-size:22px;color:var(--mute)}
+.slot.xs{opacity:.6}.slot.xs time{text-decoration:line-through}
+.xtag{color:var(--c);font-weight:700}
+.sheet>div{max-height:88vh;overflow:auto}
+.sheet .card{box-shadow:none;border:1.5px solid var(--line);margin-bottom:4px}
