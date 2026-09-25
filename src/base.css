@@ -57,8 +57,8 @@ main{padding:10px 12px}
 .rank.r1{color:var(--gold)}.rank.r2{color:var(--silver)}.rank.r3{color:var(--bronze)}
 .rank.nr{color:var(--line)}
 .who{flex:1;min-width:0}
-.dog{font-weight:700;font-size:16px;line-height:1.25;word-break:break-word}
-.hdl{font-size:13px;color:var(--ink2);margin-top:1px}
+.hdl{font-weight:700;font-size:17px;line-height:1.25;word-break:break-word;color:var(--ink)}
+.dog{font-size:13px;color:var(--ink2);margin-top:2px;word-break:break-word}
 .tags{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:6px;font-size:11.5px;color:var(--ink2)}
 .tag{background:var(--chalk);border-radius:6px;padding:1px 6px;white-space:nowrap}
 .tag.cat{font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.03em;background:transparent;border:1px solid var(--line)}

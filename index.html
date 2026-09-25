@@ -71,8 +71,8 @@ main{padding:10px 12px}
 .rank.r1{color:var(--gold)}.rank.r2{color:var(--silver)}.rank.r3{color:var(--bronze)}
 .rank.nr{color:var(--line)}
 .who{flex:1;min-width:0}
-.dog{font-weight:700;font-size:16px;line-height:1.25;word-break:break-word}
-.hdl{font-size:13px;color:var(--ink2);margin-top:1px}
+.hdl{font-weight:700;font-size:17px;line-height:1.25;word-break:break-word;color:var(--ink)}
+.dog{font-size:13px;color:var(--ink2);margin-top:2px;word-break:break-word}
 .tags{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:6px;font-size:11.5px;color:var(--ink2)}
 .tag{background:var(--chalk);border-radius:6px;padding:1px 6px;white-space:nowrap}
 .tag.cat{font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.03em;background:transparent;border:1px solid var(--line)}
@@ -186,6 +186,14 @@ nav.tabs .dot{position:absolute;top:4px;left:calc(50% + 8px);min-width:17px;heig
 footer b{color:var(--ink2);font-weight:700}
 @media (min-width:720px){.disc{padding-left:calc(50% - 348px);padding-right:calc(50% - 348px)}}
 
+.filters{display:flex;gap:8px;padding:8px 0 2px}
+.ccsel{flex:1;min-width:0;position:relative;display:flex;align-items:center;background:var(--card);border:1.5px solid var(--line);border-radius:12px;height:42px;padding:0 10px}
+.ccsel.on{border-color:var(--ink)}
+.ccsel .f{font-size:18px;margin-right:6px;pointer-events:none}
+.ccsel select{flex:1;min-width:0;border:0;background:transparent;appearance:none;-webkit-appearance:none;font-size:16px;font-weight:500;outline:0;padding-right:18px;height:100%;text-overflow:ellipsis}
+.ccsel svg{position:absolute;right:10px;pointer-events:none;opacity:.6}
+.filters .chip{height:42px;border-radius:12px;padding:0 12px;font-size:13.5px}
+
 </style>
 </head>
 <body>
@@ -212,7 +220,13 @@ footer b{color:var(--ink2);font-weight:700}
     <input id="q" type="search" autocomplete="off">
     <button class="clear" id="qx" aria-label="clear">×</button>
   </label>
-  <div class="chips" id="chips" role="toolbar"></div>
+  <div class="filters">
+    <label class="ccsel">
+      <select id="cc" aria-label="Country"></select>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </label>
+    <button class="chip" id="favChip" aria-pressed="false"></button>
+  </div>
   <div class="meta"><span id="count"></span>
     <label><input type="checkbox" id="showRes"> <span data-i="showRes"></span></label>
   </div>
@@ -241,7 +255,7 @@ footer b{color:var(--ink2);font-weight:700}
 const I18N = {
   ja: {
     title:"トラッカー", unoff:"非公式", disc:"IGPファンが作った非公式のトラッカーです。公式発表との時間差や変更がある場合があります。簡易チェック用としてお使いください。", discLink:"正式な情報は公式サイトへ →", discShort:"非公式・簡易チェック用。正式な情報は公式サイトでご確認ください。", dates:"2026年10月5日〜11日（競技 7〜11日）", share:"共有",
-    ph:"🇯🇵・日本・ハンドラー・犬名・JP-01", showRes:"補欠も表示", all:"すべて", fav:"★ マイ選手",
+    ph:"🇯🇵・日本・ハンドラー・犬名・JP-01", showRes:"補欠も表示", all:"すべて", allC:"🌐 すべての国", fav:"★ マイ選手",
     tList:"出場選手", tRank:"順位", tMy:"マイ選手", tSched:"日程",
     src:"データ：公式", upd:"最終更新", tie:"順位は総合点の高い順。同点ならC科目の高い方が上位",
     live:"自動更新中", offline:"オフライン（前回のデータ）", loading:"読み込み中…",
@@ -269,7 +283,7 @@ const I18N = {
   },
   en: {
     title:"Tracker", unoff:"Unofficial", disc:"An unofficial tracker made by IGP fans. Data may lag behind or differ from official announcements — use it as a quick check only.", discLink:"Official site for confirmed info →", discShort:"Unofficial · quick check only. Confirm details on the official site.", dates:"Oct 5–11, 2026 (competition Oct 7–11)", share:"Share",
-    ph:"🇯🇵 · Japan · handler · dog · JP-01", showRes:"Show reserves", all:"All", fav:"★ My dogs",
+    ph:"🇯🇵 · Japan · handler · dog · JP-01", showRes:"Show reserves", all:"All", allC:"🌐 All countries", fav:"★ My dogs",
     tList:"Entries", tRank:"Ranking", tMy:"My dogs", tSched:"Schedule",
     src:"Data: official", upd:"Updated", tie:"Ranked by total; ties broken by higher C score",
     live:"Live", offline:"Offline (last data)", loading:"Loading…",
@@ -379,8 +393,8 @@ function card(p, showRank){
   return `<article class="card ${p.res?"res":""} ${fresh?"new":""}">${fresh?`<span class="badge">${t("newBadge")}</span>`:""}
     <div class="row1">${rk}
       <div class="who">
-        <div class="dog">${esc(p.d)}</div>
         <div class="hdl">${flag(p.cc)} ${esc(p.h)}</div>
+        <div class="dog">🐕 ${esc(p.d)}</div>
         <div class="tags"><span class="tag cat">${esc(p.cat)}${p.st?" · #"+p.st:""}</span>
           <span class="tag sx-${p.sx}">${p.sx==="F"?t("female"):t("male")}</span>
           <span class="tag">${t("age")(p.ageY,p.ageM)}</span>
@@ -395,10 +409,13 @@ function card(p, showRank){
   </article>`;
 }
 function renderChips(){
-  document.getElementById("chips").innerHTML =
-    `<button class="chip" data-cc="" aria-pressed="${!state.cc}">${t("all")}</button>` +
-    `<button class="chip" data-cc="★" aria-pressed="${state.cc==="★"}">${t("fav")} ${state.fav.size||""}</button>` +
-    countries.map(cc=>`<button class="chip" data-cc="${cc}" aria-pressed="${state.cc===cc}"><span class="f">${flag(cc)}</span>${esc(cname(cc))}</button>`).join("");
+  const n = cc => P.filter(p=>p.cc===cc && (state.res || !p.res)).length;
+  const sel = el("cc");
+  sel.innerHTML = `<option value="">${t("allC")} (${countries.length})</option>` +
+    countries.map(cc=>`<option value="${cc}">${flag(cc)} ${esc(cname(cc))}${lang==="ja"?"・"+esc(DATA.countries[cc]):""} (${n(cc)})</option>`).join("");
+  sel.value = (state.cc && state.cc!=="★") ? state.cc : "";
+  sel.parentElement.classList.toggle("on", !!sel.value);
+  const fc = el("favChip"); fc.textContent = `${t("fav")} ${state.fav.size||""}`; fc.setAttribute("aria-pressed", state.cc==="★");
 }
 function renderList(){
   const list = P.filter(p=>match(p));
@@ -454,7 +471,7 @@ function renderSched(){
       <div class="plan">${t("plan").map(([a,b])=>`<div><b>${a}</b>${b}</div>`).join("")}</div>`;
   } else {
     setCount(t("slots")(slots.length));
-    body = slots.length ? slots.map(s=>`<div class="slot"><time>${esc(s.time)}</time><span class="sb ${s.k}">${s.k}</span><div class="who"><b>${state.fav.has(s.p.cat)?"★ ":""}${flag(s.p.cc)} ${esc(s.p.d)}</b><br>${esc(s.p.h)} · ${esc(s.p.cat)}${state.day?"":" · "+esc(fmtWhen(s.w).split(" ")[0])}</div></div>`).join("") : `<div class="empty">${t("noSlot")}</div>`;
+    body = slots.length ? slots.map(s=>`<div class="slot"><time>${esc(s.time)}</time><span class="sb ${s.k}">${s.k}</span><div class="who"><b>${state.fav.has(s.p.cat)?"★ ":""}${flag(s.p.cc)} ${esc(s.p.h)}</b><br>🐕 ${esc(s.p.d)} · ${esc(s.p.cat)}${state.day?"":" · "+esc(fmtWhen(s.w).split(" ")[0])}</div></div>`).join("") : `<div class="empty">${t("noSlot")}</div>`;
   }
   el("v-sched").innerHTML = days + secs + body;
 }
@@ -506,7 +523,7 @@ function detectChanges(first){
   if (n){
     toast(t("toastNew")(n));
     if (!first && "Notification" in window && Notification.permission==="granted"){
-      const names = P.filter(p=>state.fresh.has(p.cat)).slice(0,3).map(p=>`${flag(p.cc)} ${p.d} ${p.sum??""}`).join("\n");
+      const names = P.filter(p=>state.fresh.has(p.cat)).slice(0,3).map(p=>`${flag(p.cc)} ${p.h} (${p.d}) ${p.sum??""}`).join("\n");
       try{ new Notification("WUSV 2026", {body: t("toastNew")(n) + "\n" + names, tag:"wusv26"}); }catch(e){}
     }
   }
@@ -535,7 +552,7 @@ function importPrompt(cats){
   const add = cats.filter(c=>!state.fav.has(c));
   if (!add.length) return;
   el("sheetBody").innerHTML = `<h2>${t("importTitle")}</h2><p>${t("importText")(add.length)}</p>
-    <p>${add.map(c=>{const p=P.find(x=>x.cat===c);return p?`${flag(p.cc)} ${esc(p.d)}`:esc(c)}).join("<br>")}</p>
+    <p>${add.map(c=>{const p=P.find(x=>x.cat===c);return p?`${flag(p.cc)} ${esc(p.h)} / ${esc(p.d)}`:esc(c)}).join("<br>")}</p>
     <div class="row"><button class="pbtn" id="impYes">${t("add")}</button><button class="pbtn ghost" id="impNo">${t("skip")}</button></div>`;
   el("sheet").classList.add("on");
   el("impYes").onclick = ()=>{ add.forEach(c=>{ state.fav.add(c); const p=P.find(x=>x.cat===c); if(p) state.seen[c]=snap(p); }); LS("fav",[...state.fav]); LS("seen",state.seen); closeSheet(); toast(t("added")(add.length)); switchView("my"); };
@@ -552,6 +569,8 @@ function switchView(v){
   history.replaceState(null,"",location.pathname+location.search+"#"+v);
   render(); window.scrollTo({top:0});
 }
+el("cc").addEventListener("change", e=>{ state.cc = e.target.value || null; render(); });
+el("favChip").addEventListener("click", ()=>{ state.cc = state.cc==="★" ? null : "★"; render(); });
 el("q").addEventListener("input", e=>{ state.q=e.target.value; render(); });
 el("qx").addEventListener("click", ()=>{ el("q").value=""; state.q=""; render(); el("q").focus(); });
 el("showRes").addEventListener("change", e=>{ state.res=e.target.checked; render(); });
@@ -559,7 +578,6 @@ el("sheet").addEventListener("click", e=>{ if (e.target.id==="sheet") closeSheet
 el("shareBtn").addEventListener("click", ()=> openSheet(t("shareTitle"), t("shareText"), baseUrl() + (lang==="en"?"?lang=en":"")));
 document.addEventListener("click", async e=>{
   const L = e.target.closest("[data-lang]"); if (L){ lang=L.dataset.lang; LS("lang",lang); applyLang(); render(); return; }
-  const c = e.target.closest("[data-cc]"); if (c){ state.cc = c.dataset.cc || null; render(); return; }
   const f = e.target.closest("[data-fav]"); if (f){
     const k=f.dataset.fav;
     if (state.fav.has(k)){ state.fav.delete(k); state.fresh.delete(k); delete state.seen[k]; }

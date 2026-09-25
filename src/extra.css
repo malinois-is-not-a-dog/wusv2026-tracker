@@ -43,3 +43,11 @@ nav.tabs .dot{position:absolute;top:4px;left:calc(50% + 8px);min-width:17px;heig
 .disc{position:relative;padding-right:34px;display:block}.disc a{display:inline-block;margin-top:3px}.disc button{position:absolute;top:7px;right:8px}
 footer b{color:var(--ink2);font-weight:700}
 @media (min-width:720px){.disc{padding-left:calc(50% - 348px);padding-right:calc(50% - 348px)}}
+
+.filters{display:flex;gap:8px;padding:8px 0 2px}
+.ccsel{flex:1;min-width:0;position:relative;display:flex;align-items:center;background:var(--card);border:1.5px solid var(--line);border-radius:12px;height:42px;padding:0 10px}
+.ccsel.on{border-color:var(--ink)}
+.ccsel .f{font-size:18px;margin-right:6px;pointer-events:none}
+.ccsel select{flex:1;min-width:0;border:0;background:transparent;appearance:none;-webkit-appearance:none;font-size:16px;font-weight:500;outline:0;padding-right:18px;height:100%;text-overflow:ellipsis}
+.ccsel svg{position:absolute;right:10px;pointer-events:none;opacity:.6}
+.filters .chip{height:42px;border-radius:12px;padding:0 12px;font-size:13.5px}
