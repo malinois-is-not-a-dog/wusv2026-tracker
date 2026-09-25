@@ -309,7 +309,7 @@ function renderSched(){
       <div class="plan">${t("plan").map(([a,b])=>`<div><b>${a}</b>${b}</div>`).join("")}</div>`;
   } else {
     setCount(t("slots")(slots.length));
-    body = slots.length ? slots.map(s=>`<button class="slot ${s.p.ss?"xs":""}" data-open="${esc(s.p.cat)}"><time>${esc(s.time)}</time><span class="sb ${s.k}">${s.k}</span><div class="who"><b>${state.fav.has(s.p.cat)?"★ ":""}${flag(s.p.cc)} ${esc(s.p.h)}</b><br>🐕 ${esc(s.p.d)} · ${esc(s.p.cat)}${s.p.sched.no?" · #"+s.p.sched.no:""}${state.day?"":" · "+esc(fmtWhen(s.w).split(" ")[0])}${s.p.ss?` · <span class="xtag">${esc(stLabel(s.p.ss))}</span>`:""}</div><span class="go">›</span></button>`).join("") : `<div class="empty">${t("noSlot")}</div>`;
+    let lastD=""; body = slots.length ? slots.map(s=>{ const hd = (!state.day && s.date!==lastD) ? `<div class="dayh">${esc(fmtWhen(s.date+" ").trim())}</div>` : ""; lastD=s.date; return hd + `<button class="slot ${s.p.ss?"xs":""}" data-open="${esc(s.p.cat)}"><time>${esc(s.time)}</time><span class="sb ${s.k}">${s.k}</span><div class="who"><b>${state.fav.has(s.p.cat)?"★ ":""}${flag(s.p.cc)} ${esc(s.p.h)}</b><br>🐕 ${esc(s.p.d)} · ${esc(s.p.cat)}${s.p.sched.no?" · #"+s.p.sched.no:""}${s.p.ss?` · <span class="xtag">${esc(stLabel(s.p.ss))}</span>`:""}</div><span class="go">›</span></button>`; }).join("") : `<div class="empty">${t("noSlot")}</div>`;
   }
   el("v-sched").innerHTML = days + secs + body;
 }

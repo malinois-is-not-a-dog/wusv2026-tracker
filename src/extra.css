@@ -64,3 +64,6 @@ button.slot{width:100%;border:0;text-align:left;cursor:pointer}
 .xtag{color:var(--c);font-weight:700}
 .sheet>div{max-height:88vh;overflow:auto}
 .sheet .card{box-shadow:none;border:1.5px solid var(--line);margin-bottom:4px}
+
+.dayh{font-family:var(--disp);font-weight:800;font-size:18px;letter-spacing:.03em;margin:14px 2px 6px;color:var(--ink2)}
+.dayh:first-of-type{margin-top:4px}
