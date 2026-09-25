@@ -34,3 +34,12 @@ nav.tabs .dot{position:absolute;top:4px;left:calc(50% + 8px);min-width:17px;heig
 .sheet img{display:block;margin:12px auto 0;width:160px;height:160px;border-radius:8px}
 
 .toprow .eyebrow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;padding-top:8px}
+
+.disc{display:flex;gap:8px;align-items:flex-start;background:#FFF6DC;border-bottom:1px solid #EAD9A0;color:#5A4A12;font-size:12.5px;line-height:1.5;padding:9px 12px}
+.disc[hidden]{display:none}
+.disc>span{flex:1}
+.disc a{color:#5A4A12;font-weight:700;white-space:nowrap}
+.disc button{border:0;background:transparent;font-size:18px;line-height:1;color:#8A7530;padding:0 2px}
+.disc{position:relative;padding-right:34px;display:block}.disc a{display:inline-block;margin-top:3px}.disc button{position:absolute;top:7px;right:8px}
+footer b{color:var(--ink2);font-weight:700}
+@media (min-width:720px){.disc{padding-left:calc(50% - 348px);padding-right:calc(50% - 348px)}}

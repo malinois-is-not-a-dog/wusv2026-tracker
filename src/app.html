@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14231B">
-<title>WUSV 2026 Tracker</title>
-<meta name="description" content="WUSV World Championship IP 2026 — live A/B/C scores, rankings, start times. 出場選手・成績・スケジュール">
-<meta property="og:title" content="WUSV 2026 Tracker">
-<meta property="og:description" content="Live A/B/C scores & rankings · 出場選手・成績をスマホで">
+<title>WUSV 2026 Tracker（非公式 / Unofficial）</title>
+<meta name="description" content="Unofficial fan-made tracker. WUSV World Championship IP 2026 — A/B/C scores, rankings, start times. 出場選手・成績・スケジュール">
+<meta property="og:title" content="WUSV 2026 Tracker（非公式 / Unofficial）">
+<meta property="og:description" content="IGPファンによる非公式トラッカー · Unofficial fan-made tracker">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
 <body>
 <header class="top">
   <div class="toprow">
-    <div class="eyebrow">WUSV World Championship IP</div>
+    <div class="eyebrow"><span data-i="unoff">非公式</span> · WUSV World Championship IP</div>
     <div class="tools">
       <div class="lang" role="group" aria-label="Language">
         <button data-lang="ja" aria-pressed="true">JA</button><button data-lang="en" aria-pressed="false">EN</button>
@@ -30,6 +30,8 @@
   <div class="sub"><span data-i="dates"></span> · <span class="live" id="live"><i></i><span id="liveTxt"></span></span></div>
   <div class="rail-legend" aria-hidden="true"><i></i><i></i><i></i></div>
 </header>
+
+<div class="disc" id="disc" role="note"><span data-i="disc"></span> <a href="https://wusv2026.fci.systems/results.php" target="_blank" rel="noopener" data-i="discLink"></a><button id="discX" aria-label="close">×</button></div>
 
 <div class="bar">
   <label class="search">
@@ -48,7 +50,7 @@
   <section class="view" id="v-rank"></section>
   <section class="view" id="v-my"></section>
   <section class="view" id="v-sched"></section>
-  <footer><span data-i="src"></span> <a href="https://wusv2026.fci.systems/participants.php" target="_blank" rel="noopener">fci.systems</a> · <span data-i="upd"></span> <span id="upd">—</span> JST<br><span data-i="tie"></span></footer>
+  <footer><b data-i="discShort"></b><br><span data-i="src"></span> <a href="https://wusv2026.fci.systems/participants.php" target="_blank" rel="noopener">fci.systems</a> · <span data-i="upd"></span> <span id="upd">—</span> JST<br><span data-i="tie"></span></footer>
 </main>
 
 <nav class="tabs" role="tablist">
@@ -65,7 +67,7 @@
 /* ============ i18n ============ */
 const I18N = {
   ja: {
-    title:"トラッカー", dates:"2026年10月5日〜11日（競技 7〜11日）", share:"共有",
+    title:"トラッカー", unoff:"非公式", disc:"IGPファンが作った非公式のトラッカーです。公式発表との時間差や変更がある場合があります。簡易チェック用としてお使いください。", discLink:"正式な情報は公式サイトへ →", discShort:"非公式・簡易チェック用。正式な情報は公式サイトでご確認ください。", dates:"2026年10月5日〜11日（競技 7〜11日）", share:"共有",
     ph:"🇯🇵・日本・ハンドラー・犬名・JP-01", showRes:"補欠も表示", all:"すべて", fav:"★ マイ選手",
     tList:"出場選手", tRank:"順位", tMy:"マイ選手", tSched:"日程",
     src:"データ：公式", upd:"最終更新", tie:"順位は総合点の高い順。同点ならC科目の高い方が上位",
@@ -84,7 +86,7 @@ const I18N = {
     myEmpty:`まだマイ選手がいません。「出場選手」や「順位」でカードの <b>★</b> をタップすると、ここでまとめて追跡できます。得点が入ると <b>NEW</b> と表示されます。`,
     newBadge:"NEW", nextUp:"次の出番", notifyOn:"🔔 通知をオン", notifyOk:"🔔 通知オン", shareFav:"マイ選手を共有", clearNew:"NEWを消す",
     toastNew:n=>`マイ選手の成績が ${n} 件更新されました`,
-    shareTitle:"このトラッカーを共有", shareText:"下のURLを送れば、誰でもスマホで開けます。",
+    shareTitle:"このトラッカーを共有", shareText:"下のURLを送れば、誰でもスマホで開けます（IGPファンによる非公式の簡易トラッカーです）。",
     copy:"コピー", copied:"コピーしました", close:"閉じる", nativeShare:"LINE などで送る",
     favShareTitle:"マイ選手を共有", favShareText:n=>`あなたのマイ選手 ${n} 頭を入れたリンクです。受け取った人は1タップで同じ選手を追跡できます。`,
     importTitle:"マイ選手の追加", importText:n=>`共有リンクに ${n} 頭の選手が含まれています。あなたのマイ選手に追加しますか？`, add:"追加する", skip:"追加しない", added:n=>`${n} 頭を追加しました`,
@@ -93,7 +95,7 @@ const I18N = {
     favAdd:"マイ選手に追加", favDel:"マイ選手から外す"
   },
   en: {
-    title:"Tracker", dates:"Oct 5–11, 2026 (competition Oct 7–11)", share:"Share",
+    title:"Tracker", unoff:"Unofficial", disc:"An unofficial tracker made by IGP fans. Data may lag behind or differ from official announcements — use it as a quick check only.", discLink:"Official site for confirmed info →", discShort:"Unofficial · quick check only. Confirm details on the official site.", dates:"Oct 5–11, 2026 (competition Oct 7–11)", share:"Share",
     ph:"🇯🇵 · Japan · handler · dog · JP-01", showRes:"Show reserves", all:"All", fav:"★ My dogs",
     tList:"Entries", tRank:"Ranking", tMy:"My dogs", tSched:"Schedule",
     src:"Data: official", upd:"Updated", tie:"Ranked by total; ties broken by higher C score",
@@ -112,7 +114,7 @@ const I18N = {
     myEmpty:`No dogs tracked yet. Tap <b>★</b> on any card in Entries or Ranking to follow it here. New scores are marked <b>NEW</b>.`,
     newBadge:"NEW", nextUp:"Next up", notifyOn:"🔔 Turn on alerts", notifyOk:"🔔 Alerts on", shareFav:"Share my dogs", clearNew:"Clear NEW",
     toastNew:n=>`${n} new score update(s) for your dogs`,
-    shareTitle:"Share this tracker", shareText:"Send this link — anyone can open it on their phone.",
+    shareTitle:"Share this tracker", shareText:"Send this link — anyone can open it on their phone (unofficial fan-made quick tracker).",
     copy:"Copy", copied:"Copied", close:"Close", nativeShare:"Send via apps",
     favShareTitle:"Share my dogs", favShareText:n=>`This link includes your ${n} tracked dogs. Friends can follow the same dogs in one tap.`,
     importTitle:"Add tracked dogs", importText:n=>`This link includes ${n} dogs. Add them to your list?`, add:"Add", skip:"Not now", added:n=>`Added ${n} dogs`,
@@ -400,6 +402,11 @@ document.addEventListener("click", async e=>{
     const r = await Notification.requestPermission(); render(); if (r==="granted") toast(t("notifyNote")); return; }
 });
 document.addEventListener("visibilitychange", ()=>{ if (!document.hidden) load(false); });
+
+/* ============ disclaimer ============ */
+const dx = LS("discHidden");
+if (dx && Date.now()-dx < 3*864e5) el("disc").hidden = true;
+el("discX").addEventListener("click", ()=>{ el("disc").hidden = true; LS("discHidden", Date.now()); });
 
 /* ============ boot ============ */
 state.fresh = new Set(LS("freshList")||[]);
