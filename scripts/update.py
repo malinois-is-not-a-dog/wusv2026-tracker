@@ -65,7 +65,10 @@ def results():
     out = {}
     for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", r, re.S):
         c = [T(x) for x in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)]
-        if len(c) >= 12: out[c[2]] = c
+        # 列: #, Start No., Cat.No., Handler, Dog, [Breed], A, B, C, Tot., Rating, Pl.
+        # 2026-09-30 に Breed 列が無くなり 11 列になった → どちらの形式でも同じ並びに正規化
+        if len(c) == 11: c = c[:5] + [""] + c[5:]
+        if len(c) >= 12 and re.match(r"[A-Z]{2}-\d+", c[2]): out[c[2]] = c
     return out
 
 def schedule(parts):
