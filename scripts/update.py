@@ -104,8 +104,14 @@ def schedule(parts):
             if m and m.group(1) in DAYMAP: e[k] = f"{DAYMAP[m.group(1)]} {m.group(2)}"
         out[cat] = e
     ratio = hit / len(rows) if rows else 0
-    print(f"shedule1 rows={len(rows)} match={hit} ({ratio:.0%})")
-    if ratio < 0.8: return {}
+    filled = sum(1 for r in rows if re.search(r"[A-Z]{2}-\w+", T(r)))
+    print(f"shedule1 rows={len(rows)} filled={filled} match={hit} ({ratio:.0%})")
+    if ratio < 0.8:
+        # 抽選が公開された（番号が半分以上埋まった）のに一致しない = 形式変更 → 失敗させてメール通知
+        if rows and filled >= 0.5 * len(rows):
+            print(f"SCHEDULE CHECK FAILED: draw published ({filled}/{len(rows)} filled) but only {hit} match entries")
+            sys.exit(1)
+        return {}
     try:
         s2 = re.sub(r"<!--.*?-->", "", get(BASE + "/shedule2.php"), flags=re.S)
         n2 = 0
@@ -117,6 +123,7 @@ def schedule(parts):
                 if len(c) >= 3 and c[2] in out and re.match(r"\d{1,2}:\d{2}$", c[0]):
                     out[c[2]][part] = f"{day} {c[0]}"; out[c[2]].setdefault("std", []).append(part); n2 += 1
         print(f"shedule2 stadium slots applied={n2}")
+        if n2 == 0: print("WARNING: stadium list gave no slots (shedule1 times used)")
     except Exception as e:
         print("stadium list skipped:", e)
     return out

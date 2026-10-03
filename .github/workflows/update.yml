@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:
   group: update
@@ -28,8 +29,21 @@ jobs:
       - name: Commit if changed
         run: |
           if git diff --quiet -- data.json; then echo "no change"; exit 0; fi
+          # 出番表が空 → 入った瞬間（＝抽選公開後の初回取り込み）を検出
+          before=$(git show HEAD:data.json | python3 -c "import json,sys;print(len(json.load(sys.stdin).get('sched',{})))")
+          after=$(python3 -c "import json;print(len(json.load(open('data.json')).get('sched',{})))")
+          if [ "$before" = "0" ] && [ "$after" != "0" ]; then echo "DRAW=1" >> "$GITHUB_ENV"; fi
           git config user.name "wusv-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data.json
           git commit -m "data: $(date -u +'%Y-%m-%d %H:%M') UTC"
           git push
+      - name: Report draw (first time only)
+        if: env.DRAW == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/draw_report.py
+          title="抽選結果を取り込みました（$(date -u +'%m/%d %H:%M') UTC）"
+          if head -1 draw_report.md | grep -q "⚠️"; then title="⚠️ $title 要確認"; fi
+          gh issue create --title "$title" --body-file draw_report.md --assignee "${{ github.repository_owner }}"
