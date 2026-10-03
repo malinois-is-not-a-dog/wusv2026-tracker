@@ -71,6 +71,14 @@ def results():
         if len(c) >= 12 and re.match(r"[A-Z]{2}-\w+$", c[2]): out[c[2]] = c
     return out
 
+def nname(x):
+    """名前の表記ゆれを吸収: (Wild Card)/(RES) 除去・アクセント除去・大小文字・語順"""
+    import unicodedata
+    x = re.sub(r"\((wild card|res)\)", "", x, flags=re.I)
+    x = x.translate(str.maketrans("łŁøØđĐßæÆœŒ", "lLoOdDsaAoO"))
+    x = unicodedata.normalize("NFKD", x).encode("ascii", "ignore").decode().lower()
+    return " ".join(sorted(re.findall(r"[a-z0-9]+", x)))
+
 def schedule(parts):
     """抽選後の公式スタートリストを各選手に結び付ける。
     shedule1.php: 抽選番号・A/B/C の日時（全体の出番表）
@@ -88,7 +96,7 @@ def schedule(parts):
         c = [T(x) for x in re.findall(r"<td[^>]*>(.*?)</td>", r, re.S)]
         if len(c) < 6: continue
         cat = c[1]
-        if cat in byc and byc[cat]["h"] == c[2]: hit += 1
+        if cat in byc and nname(byc[cat]["h"]) == nname(c[2]): hit += 1
         e = {"no": num(c[0].rstrip("."))}
         if "<del>" in r: e["x"] = 1  # 取り消し線 = 棄権・出場取り消し
         for k, v in zip("ABC", c[3:6]):
