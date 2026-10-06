@@ -81,7 +81,7 @@ const I18N = {
     dogs:(n,c)=>`${n} 頭 / ${c} か国`, rankN:n=>`順位対象 ${n} 頭`, myN:n=>`マイ選手 ${n} 頭`,
     male:"♂ オス", female:"♀ メス", age:(y,m)=>`${y}歳${m}ヶ月`, reserve:"補欠",
     sec:{A:"追求",B:"服従",C:"防衛"}, pend:"未実施", ofN:n=>`${n}/3 科目`,
-    rating:"評価", done:"済", st:{W:"棄権",D:"失格",T:"中止",N:"欠場"}, stNote:"順位対象外", drawNo:"出走順", openCard:"選手データを見る", xSched:"取消", entries:"出場頭数",
+    rating:"評価", done:"済", st:{W:"棄権",D:"失格",T:"中止",N:"欠場"}, stNote:"順位対象外", drawNo:"", openCard:"選手データを見る", xSched:"取消", entries:"出場頭数",
     none:"該当する選手がいません。検索語を短くするか、国を「すべて」に戻してください。",
     noScores:`まだ成績が出ていません（競技は <b>10月7日（水）</b>開始）。公式に成績が掲載されると、数分以内にここへ自動で反映されます。`,
     openRes:"公式リザルトを開く →", openSched:"公式スケジュールを開く →",
@@ -230,7 +230,7 @@ function card(p, showRank){
       <div class="who">
         <div class="hdl">${flag(p.cc)} ${esc(p.h)}</div>
         <div class="dog">🐕 ${esc(p.d)}</div>
-        <div class="tags"><span class="tag cat">${esc(p.cat)}</span>${(p.st||p.sched.no)?`<span class="tag draw">${t("drawNo")} #${p.st||p.sched.no}</span>`:""}
+        <div class="tags"><span class="tag cat">${esc(p.cat)}</span>${(p.st||p.sched.no)?`<span class="tag draw">${t("drawNo") ? t("drawNo")+" " : ""}#${p.st||p.sched.no}</span>`:""}
           <span class="tag sx-${p.sx}">${p.sx==="F"?t("female"):t("male")}</span>
           <span class="tag">${t("age")(p.ageY,p.ageM)}</span>
           ${p.res?`<span class="tag rsv">${t("reserve")}</span>`:""}</div>
