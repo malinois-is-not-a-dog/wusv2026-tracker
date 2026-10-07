@@ -148,6 +148,10 @@ def main():
     parts, leaders, names = participants()
     res = results()
     validate(parts, res)
+    prev = {}
+    if os.path.exists("data.json"):
+        try: prev = {q["cat"]: q for q in json.load(open("data.json"))["parts"]}
+        except Exception: pass
     for p in parts:
         c = res.get(p["cat"])
         p["st"] = num(c[1]) if c else None  # Start No.（抽選番号）
@@ -163,6 +167,13 @@ def main():
         for k in ("ax", "bx", "cx", "tx"):
             code = code or status_code(p.get(k, ""))
         if code: p["ss"] = code
+        # 失格で公式から点数が消えることがある → 消える前の点数を fz（没収された配点）として保持
+        q = prev.get(p["cat"], {})
+        fz = dict(q.get("fz") or {})
+        if code == "D":
+            for k in "abc":
+                if q.get(k) is not None and p[k] is None: fz.setdefault(k.upper(), q[k])
+        if code == "D" and fz: p["fz"] = fz
     sched = schedule(parts)
     body = dict(countries=names, leaders=leaders, parts=parts, sched=sched)
     old = {}

@@ -198,19 +198,34 @@ function statusCells(p){
   const out = {};
   ["A","B","C"].forEach(k=>{ const raw = p[k.toLowerCase()+"x"]; if (raw) out[k] = {txt:raw, code:p.ss}; });
   if (!p.ss) return out;
+  if (p.ss==="D"){
+    // 失格：失格になった科目だけ「失格」、実施済みで没収された科目は配点に取り消し線、未実施は ➖
+    const fz = p.fz||{};
+    let dq = p.dq || ["A","B","C"].find(k=>out[k]);
+    if (!dq){ const blank = ["A","B","C"].filter(k=>p[k.toLowerCase()]==null && fz[k]==null)
+      .sort((x,y)=>(p.sched[x]||"9"+x).localeCompare(p.sched[y]||"9"+y)); dq = blank[0]; }
+    ["A","B","C"].forEach(k=>{
+      const v = p[k.toLowerCase()] ?? fz[k];
+      if (k===dq) out[k] = {txt:stLabel("D"), code:"D"};
+      else if (v!=null) out[k] = {txt:String(v), code:"fz"};
+      else out[k] = {txt:"➖", code:"-"};
+    });
+    return out;
+  }
   const blank = ["A","B","C"].filter(k=>p[k.toLowerCase()]==null && !out[k])
     .sort((x,y)=>(p.sched[x]||"9"+x).localeCompare(p.sched[y]||"9"+y));
-  if (p.ss==="D") blank.forEach(k=>out[k]={txt:stLabel("D"),code:"D"});
-  else if (!Object.keys(out).length && blank.length){ out[blank[0]]={txt:stLabel(p.ss),code:p.ss}; blank.slice(1).forEach(k=>out[k]={txt:"—",code:"-"}); }
+  if (!Object.keys(out).length && blank.length){ out[blank[0]]={txt:stLabel(p.ss),code:p.ss}; blank.slice(1).forEach(k=>out[k]={txt:"—",code:"-"}); }
   else blank.forEach(k=>out[k]={txt:"—",code:"-"});
   return out;
 }
 function seg(p,k,flash){
-  const v = p[k.toLowerCase()], w = p.sched[k], sx = statusCells(p)[k];
-  const main = v!=null ? `<div class="sc">${v}</div>`
+  const sx = statusCells(p)[k], v = sx && sx.code==="fz" ? null : p[k.toLowerCase()], w = p.sched[k];
+  const main = sx && sx.code==="fz" ? `<div class="sc fz"><s>${esc(sx.txt)}</s></div>`
+    : v!=null ? `<div class="sc">${v}</div>`
     : sx ? `<div class="sc stx ${sx.code==="-"?"dash":""}">${esc(sx.txt)}</div>`
     : `<div class="sc pend">${t("pend")}</div>`;
-  return `<div class="seg ${k} ${v!=null?"done":""} ${sx&&v==null&&sx.code!=="-"?"stc":""} ${flash&&v!=null?"flash":""}"><div class="lb"><em>${k}</em>${t("sec")[k]}</div>
+  const cls = sx&&sx.code==="fz" ? "fzc" : (sx&&v==null&&sx.code!=="-"?"stc":"");
+  return `<div class="seg ${k} ${v!=null?"done":""} ${cls} ${flash&&v!=null?"flash":""}"><div class="lb"><em>${k}</em>${t("sec")[k]}</div>
     ${main}
     ${w?`<div class="when">${esc(fmtWhen(w))}</div>`:""}
     <div class="fill" style="width:${v!=null?Math.max(2,v):0}%"></div></div>`;
@@ -235,7 +250,7 @@ function card(p, showRank){
           <span class="tag">${t("age")(p.ageY,p.ageM)}</span>
           ${p.res?`<span class="tag rsv">${t("reserve")}</span>`:""}</div>
       </div>
-      <div class="tot">${p.ss?`<b class="stt">${esc(stLabel(p.ss))}</b><span>${p.sum!=null?p.sum+" · ":""}${t("stNote")}</span>`:`<b>${p.sum??"—"}</b><span>${t("ofN")(p.done)}</span>`}</div>
+      <div class="tot">${p.ss?`<b class="stt">${esc(stLabel(p.ss))}</b><span>${p.sum!=null&&p.ss!=="D"?p.sum+" · ":""}${t("stNote")}</span>`:`<b>${p.sum??"—"}</b><span>${t("ofN")(p.done)}</span>`}</div>
       <button class="star" data-fav="${esc(p.cat)}" aria-pressed="${fav}" aria-label="${fav?t("favDel"):t("favAdd")}">★</button>
     </div>
     ${p.res?"":`<div class="trail">${seg(p,"A",fresh)}${seg(p,"B",fresh)}${seg(p,"C",fresh)}</div>`}
