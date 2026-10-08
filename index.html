@@ -159,6 +159,7 @@ nav.tabs button{position:relative}
 nav.tabs .dot{position:absolute;top:4px;left:calc(50% + 8px);min-width:17px;height:17px;border-radius:9px;background:var(--c);color:#fff;font-size:10.5px;font-weight:700;line-height:17px;padding:0 4px}
 .favtools{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .favtools .chip{background:var(--card)}
+.favtools .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;z-index:50;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .nextup{font-size:11.5px;margin-top:6px;color:var(--b);font-weight:500}
@@ -216,6 +217,10 @@ button.slot{width:100%;border:0;text-align:left;cursor:pointer}
 .seg .sc.fz s{text-decoration:none;position:relative;display:inline-block}
 .seg .sc.fz s::after{content:"";position:absolute;left:-3px;right:-3px;top:55%;height:2px;border-radius:2px;background:var(--c);opacity:.85;transform:rotate(-8deg)}
 .seg .sc.stx.dash{font-size:15px}
+
+/* 出番が近いマイ選手 */
+.nextup.soon{color:#fff;background:var(--c);border-radius:6px;padding:4px 8px;display:inline-block;font-weight:600}
+.nextup.soon b{font-weight:800}
 
 </style>
 </head>
@@ -294,14 +299,15 @@ const I18N = {
     wd:["日","月","火","水","木","金","土"], mon:"10月",
     slots:n=>`${n} 件の出番`, compDays:"競技日 10/7〜10/11", noSlot:"この条件の出番はありません。",
     myEmpty:`まだマイ選手がいません。「出場選手」や「順位」でカードの <b>★</b> をタップすると、ここでまとめて追跡できます。得点が入ると <b>NEW</b> と表示されます。`,
-    newBadge:"NEW", nextUp:"次の出番", notifyOn:"🔔 通知をオン", notifyOk:"🔔 通知オン", shareFav:"マイ選手を共有", clearNew:"NEWを消す",
+    newBadge:"NEW", nextUp:"次の出番", notifyOn:"🔔 通知をオン", notifyOk:"🔔 通知オン（成績・出番30/10分前）", shareFav:"マイ選手を共有", clearNew:"NEWを消す",
     toastNew:n=>`マイ選手の成績が ${n} 件更新されました`,
     shareTitle:"このトラッカーを共有", shareText:"下のURLを送れば、誰でもスマホで開けます（IGPファンによる非公式の簡易トラッカーです）。",
     copy:"コピー", copied:"コピーしました", close:"閉じる", nativeShare:"LINE などで送る",
     favShareTitle:"マイ選手を共有", favShareText:n=>`あなたのマイ選手 ${n} 頭を入れたリンクです。受け取った人は1タップで同じ選手を追跡できます。`,
     importTitle:"マイ選手の追加", importText:n=>`共有リンクに ${n} 頭の選手が含まれています。あなたのマイ選手に追加しますか？`, add:"追加する", skip:"追加しない", added:n=>`${n} 頭を追加しました`,
     notifyDenied:"通知が許可されていません。ブラウザの設定から許可してください。",
-    notifyNote:"通知はこのページを開いている間に届きます。",
+    notifyNote:"新しい成績と、マイ選手の出番の30分前・10分前に通知します（このページを開いている間）。",
+    soonT:"まもなく出番", soonIn:m=>`あと${m}分`, soonLocal:"現地", soonNow:"まもなく",
     favAdd:"マイ選手に追加", favDel:"マイ選手から外す"
   },
   en: {
@@ -322,14 +328,15 @@ const I18N = {
     wd:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], mon:"Oct",
     slots:n=>`${n} start slots`, compDays:"Competition Oct 7–11", noSlot:"No start slots for this filter.",
     myEmpty:`No dogs tracked yet. Tap <b>★</b> on any card in Entries or Ranking to follow it here. New scores are marked <b>NEW</b>.`,
-    newBadge:"NEW", nextUp:"Next up", notifyOn:"🔔 Turn on alerts", notifyOk:"🔔 Alerts on", shareFav:"Share my dogs", clearNew:"Clear NEW",
+    newBadge:"NEW", nextUp:"Next up", notifyOn:"🔔 Turn on alerts", notifyOk:"🔔 Alerts on (scores · 30/10 min before)", shareFav:"Share my dogs", clearNew:"Clear NEW",
     toastNew:n=>`${n} new score update(s) for your dogs`,
     shareTitle:"Share this tracker", shareText:"Send this link — anyone can open it on their phone (unofficial fan-made quick tracker).",
     copy:"Copy", copied:"Copied", close:"Close", nativeShare:"Send via apps",
     favShareTitle:"Share my dogs", favShareText:n=>`This link includes your ${n} tracked dogs. Friends can follow the same dogs in one tap.`,
     importTitle:"Add tracked dogs", importText:n=>`This link includes ${n} dogs. Add them to your list?`, add:"Add", skip:"Not now", added:n=>`Added ${n} dogs`,
     notifyDenied:"Notifications are blocked. Allow them in your browser settings.",
-    notifyNote:"Alerts arrive while this page is open.",
+    notifyNote:"Alerts for new scores and 30 / 10 min before your dogs' turns (while this page is open).",
+    soonT:"Up soon", soonIn:m=>`in ${m} min`, soonLocal:"local", soonNow:"now",
     favAdd:"Track this dog", favDel:"Stop tracking"
   }
 };
@@ -435,12 +442,47 @@ function seg(p,k,flash){
     ${w?`<div class="when">${esc(fmtWhen(w))}</div>`:""}
     <div class="fill" style="width:${v!=null?Math.max(2,v):0}%"></div></div>`;
 }
-function nextUp(p){
-  const now = new Date();
-  const n = ["A","B","C"].filter(k=>p.sched[k] && p[k.toLowerCase()]==null)
-    .map(k=>({k,w:p.sched[k],d:new Date(p.sched[k].replace(" ","T")+":00+02:00")}))
+const NOW = () => window.__NOW ? new Date(window.__NOW) : new Date();
+const slotDate = w => new Date(w.replace(" ","T")+":00+02:00");  // 会場（スロベニア, CEST）の時刻
+function upcoming(p){
+  const now = NOW();
+  return ["A","B","C"].filter(k=>p.sched[k] && p[k.toLowerCase()]==null && !p.ss)
+    .map(k=>({k,w:p.sched[k],d:slotDate(p.sched[k])}))
     .filter(x=>x.d > new Date(now-3*3600e3)).sort((a,b)=>a.d-b.d)[0];
-  return n ? `<div class="nextup">⏱ ${t("nextUp")}: ${n.k} ${t("sec")[n.k]} · ${esc(fmtWhen(n.w))}</div>` : "";
+}
+function nextUp(p){
+  const n = upcoming(p); if (!n) return "";
+  const m = Math.ceil((n.d - NOW())/60000);
+  const soon = m <= 30 && m > -15;
+  return `<div class="nextup ${soon?"soon":""}">${soon?"🔔":"⏱"} ${t("nextUp")}: ${n.k} ${t("sec")[n.k]} · ${esc(fmtWhen(n.w))}${soon?` · <b>${m>0?t("soonIn")(m):t("soonNow")}</b>`:""}</div>`;
+}
+// マイ選手の出番 30分前・10分前に通知（このページを開いている間）。同じ出番・同じタイミングは1回だけ
+const LEADS = [30, 10];
+function checkSoon(){
+  if (!P.length) return;
+  const now = NOW(), done = LS("alerted") || {}, hits = [];
+  P.forEach(p=>{
+    if (!state.fav.has(p.cat)) return;
+    const n = upcoming(p); if (!n) return;
+    const m = (n.d - now)/60000;
+    LEADS.forEach(L=>{
+      const key = `${p.cat}|${n.k}|${n.w}|${L}`;
+      if (m <= L && m > L-15 && !done[key]){ done[key] = 1; hits.push({p, n, m:Math.max(0,Math.ceil(m)), L}); }
+    });
+  });
+  if (!hits.length) return;
+  LS("alerted", done);
+  // 同じ選手で30分前・10分前が同時に該当したら近い方だけ
+  const seen = new Set(), list = hits.sort((a,b)=>a.L-b.L).filter(h=>!seen.has(h.p.cat) && seen.add(h.p.cat));
+  list.forEach(({p,n,m})=>{
+    const tm = n.w.split(" ")[1];
+    const line = `${flag(p.cc)} ${p.h}（${p.d}）\n${n.k} ${t("sec")[n.k]} ${tm}（${t("soonLocal")}）· ${t("soonIn")(m)}`;
+    toast(`🔔 ${t("soonT")}: ${p.h} · ${n.k} ${t("soonIn")(m)}`);
+    if ("Notification" in window && Notification.permission==="granted"){
+      try{ new Notification(`🔔 ${t("soonT")} — WUSV 2026`, {body: line, tag:"wusv26-"+p.cat+n.k}); }catch(e){}
+    }
+  });
+  render();
 }
 function card(p, showRank){
   const fav = state.fav.has(p.cat), fresh = state.fresh.has(p.cat);
@@ -673,10 +715,12 @@ const h0 = location.hash.slice(1);
 if (["list","rank","my","sched"].includes(h0)) { state.view=h0; document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", b.dataset.v===h0)); document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on", s.id==="v-"+h0)); }
 render();
 load(true).then(()=>{
+  checkSoon();
   const pc = params.get("p"); if (pc) openCard(pc);
   const f = params.get("fav"); if (f) importPrompt(f.split(",").map(x=>x.trim()).filter(Boolean));
 });
 setInterval(()=>{ if (!document.hidden) load(false); }, 60000);
+setInterval(checkSoon, 30000);
 </script>
 </body>
 </html>

@@ -17,6 +17,7 @@ nav.tabs button{position:relative}
 nav.tabs .dot{position:absolute;top:4px;left:calc(50% + 8px);min-width:17px;height:17px;border-radius:9px;background:var(--c);color:#fff;font-size:10.5px;font-weight:700;line-height:17px;padding:0 4px}
 .favtools{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .favtools .chip{background:var(--card)}
+.favtools .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;z-index:50;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .nextup{font-size:11.5px;margin-top:6px;color:var(--b);font-weight:500}
@@ -74,3 +75,7 @@ button.slot{width:100%;border:0;text-align:left;cursor:pointer}
 .seg .sc.fz s{text-decoration:none;position:relative;display:inline-block}
 .seg .sc.fz s::after{content:"";position:absolute;left:-3px;right:-3px;top:55%;height:2px;border-radius:2px;background:var(--c);opacity:.85;transform:rotate(-8deg)}
 .seg .sc.stx.dash{font-size:15px}
+
+/* 出番が近いマイ選手 */
+.nextup.soon{color:#fff;background:var(--c);border-radius:6px;padding:4px 8px;display:inline-block;font-weight:600}
+.nextup.soon b{font-weight:800}
