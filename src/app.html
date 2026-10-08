@@ -92,6 +92,12 @@ const I18N = {
     myEmpty:`まだマイ選手がいません。「出場選手」や「順位」でカードの <b>★</b> をタップすると、ここでまとめて追跡できます。得点が入ると <b>NEW</b> と表示されます。`,
     newBadge:"NEW", nextUp:"次の出番", notifyOn:"🔔 通知をオン", notifyOk:"🔔 通知オン（結果・出番30/10分前）", shareFav:"マイ選手を共有", clearNew:"NEWを消す",
     toastNew:n=>`マイ選手の成績が ${n} 件更新されました`,
+    nsetT:"通知設定", nRes:"結果の通知", nResS:"マイ選手の点数・失格・棄権が出たとき",
+    nSoon:"出番の通知", nSoonS:"マイ選手の出番の30分前・10分前",
+    nToast:"画面内のお知らせ", nToastS:"サイトの下に出る短い表示",
+    nPhone:"スマホの通知", nPhoneS:"ブラウザの通知を許可すると、画面の上に届きます",
+    nPhoneOn:"許可済み", nUnsup:"このブラウザは通知に対応していません",
+    nNote:"通知はこのページを開いている間に届きます。設定はこのスマホにだけ保存されます。", on:"オン", off:"オフ",
     resT:"結果", pts:v=>`${v}点`, totalW:"／合計", provRank:r=>`暫定${r}位`,
     shareTitle:"このトラッカーを共有", shareText:"下のURLを送れば、誰でもスマホで開けます（IGPファンによる非公式の簡易トラッカーです）。",
     copy:"コピー", copied:"コピーしました", close:"閉じる", nativeShare:"LINE などで送る",
@@ -122,6 +128,12 @@ const I18N = {
     myEmpty:`No dogs tracked yet. Tap <b>★</b> on any card in Entries or Ranking to follow it here. New scores are marked <b>NEW</b>.`,
     newBadge:"NEW", nextUp:"Next up", notifyOn:"🔔 Turn on alerts", notifyOk:"🔔 Alerts on (results · 30/10 min before)", shareFav:"Share my dogs", clearNew:"Clear NEW",
     toastNew:n=>`${n} new score update(s) for your dogs`,
+    nsetT:"Alert settings", nRes:"Result alerts", nResS:"When your dogs get a score, DQ or withdrawal",
+    nSoon:"Turn alerts", nSoonS:"30 and 10 min before your dogs' turns",
+    nToast:"In-page banner", nToastS:"Short message at the bottom of the page",
+    nPhone:"Phone notifications", nPhoneS:"Allow browser notifications to get them on your lock / top screen",
+    nPhoneOn:"Allowed", nUnsup:"This browser doesn't support notifications",
+    nNote:"Alerts arrive while this page is open. Settings are saved on this device only.", on:"on", off:"off",
     resT:"Result", pts:v=>`${v} pts`, totalW:"/ total", provRank:r=>`provisional #${r}`,
     shareTitle:"Share this tracker", shareText:"Send this link — anyone can open it on their phone (unofficial fan-made quick tracker).",
     copy:"Copy", copied:"Copied", close:"Close", nativeShare:"Send via apps",
@@ -251,6 +263,9 @@ function nextUp(p){
 }
 // マイ選手の出番 30分前・10分前に通知（このページを開いている間）。同じ出番・同じタイミングは1回だけ
 const LEADS = [30, 10];
+// 通知の種類ごとのオン・オフ（この端末に保存）。既定はすべてオン
+const PREF = () => Object.assign({res:true, soon:true, toast:true}, LS("npref")||{});
+const pushOk = () => "Notification" in window && Notification.permission==="granted";
 function checkSoon(){
   if (!P.length) return;
   const now = NOW(), done = LS("alerted") || {}, hits = [];
@@ -270,8 +285,9 @@ function checkSoon(){
   list.forEach(({p,n,m})=>{
     const tm = n.w.split(" ")[1];
     const line = `${flag(p.cc)} ${p.h}（${p.d}）\n${n.k} ${t("sec")[n.k]} ${tm}（${t("soonLocal")}）· ${t("soonIn")(m)}`;
-    toast(`🔔 ${t("soonT")}: ${p.h} · ${n.k} ${t("soonIn")(m)}`);
-    if ("Notification" in window && Notification.permission==="granted"){
+    if (!PREF().soon) return;
+    if (PREF().toast) toast(`🔔 ${t("soonT")}: ${p.h} · ${n.k} ${t("soonIn")(m)}`);
+    if (pushOk()){
       try{ new Notification(`🔔 ${t("soonT")} — WUSV 2026`, {body: line, tag:"wusv26-"+p.cat+n.k}); }catch(e){}
     }
   });
@@ -332,16 +348,31 @@ function renderRank(){
   }
   el("v-rank").innerHTML = strip() + body;
 }
+function nsetPanel(perm){
+  const pf = PREF();
+  const sw = (k,label,sub) => `<label class="nrow"><span><b>${label}</b><small>${sub}</small></span><input type="checkbox" class="sw" data-np="${k}" ${pf[k]?"checked":""}></label>`;
+  const ph = perm==="granted" ? `<span class="nok">✓ ${t("nPhoneOn")}</span>`
+    : perm==="denied" ? `<span class="nng">${t("notifyDenied")}</span>`
+    : perm==="unsupported" ? `<span class="nng">${t("nUnsup")}</span>`
+    : `<button class="chip on" id="notifyBtn">${t("notifyOn")}</button>`;
+  return `<div class="nset">
+    ${sw("res", t("nRes"), t("nResS"))}
+    ${sw("soon", t("nSoon"), t("nSoonS"))}
+    ${sw("toast", t("nToast"), t("nToastS"))}
+    <div class="nrow"><span><b>${t("nPhone")}</b><small>${t("nPhoneS")}</small></span>${ph}</div>
+    <p class="nnote">${t("nNote")}</p>
+  </div>`;
+}
 function renderMy(){
   const list = P.filter(p=>state.fav.has(p.cat) && match(p,true));
   list.sort((a,b)=> (state.fresh.has(b.cat)-state.fresh.has(a.cat)) || ((a.rank??1e9)-(b.rank??1e9)) || a.cat.localeCompare(b.cat));
   setCount(t("myN")(state.fav.size));
   const perm = ("Notification" in window) ? Notification.permission : "unsupported";
   const tools = state.fav.size ? `<div class="favtools">
-      ${perm!=="unsupported"?`<button class="chip" id="notifyBtn" aria-pressed="${perm==="granted"}">${perm==="granted"?t("notifyOk"):t("notifyOn")}</button>`:""}
+      <button class="chip" id="nsetBtn" aria-expanded="${!!state.nset}">⚙️ ${t("nsetT")}</button>
       <button class="chip" id="shareFavBtn">${t("shareFav")}</button>
       ${state.fresh.size?`<button class="chip" id="clearNewBtn">${t("clearNew")}</button>`:""}
-    </div>` : "";
+    </div>${state.nset?nsetPanel(perm):""}` : "";
   el("v-my").innerHTML = tools + (list.length ? list.map(p=>card(p,true)).join("") : `<div class="note">${t("myEmpty")}</div>`);
 }
 function renderSched(){
@@ -424,9 +455,9 @@ function detectChanges(first){
     sv[p.cat] = cur;
   });
   LS("seen", state.seen); LS("seenV", sv); LS("freshList", [...state.fresh]);
-  if (!msgs.length) return;
-  toast(msgs.length===1 ? `📣 ${msgs[0].p.h}: ${msgs[0].line}` : t("toastNew")(msgs.length));
-  if ("Notification" in window && Notification.permission==="granted"){
+  if (!msgs.length || !PREF().res) return;
+  if (PREF().toast) toast(msgs.length===1 ? `📣 ${msgs[0].p.h}: ${msgs[0].line}` : t("toastNew")(msgs.length));
+  if (pushOk()){
     msgs.slice(0,5).forEach(({p,line})=>{
       try{ new Notification(`📣 ${t("resT")} — ${flag(p.cc)} ${p.h}`, {body:`🐕 ${p.d}\n${line}`, tag:"wusv26r-"+p.cat}); }catch(e){}
     });
@@ -501,9 +532,15 @@ document.addEventListener("click", async e=>{
   const tb = e.target.closest("nav.tabs button"); if (tb){ switchView(tb.dataset.v); return; }
   if (e.target.id==="clearNewBtn"){ markSeen(); render(); return; }
   if (e.target.id==="shareFavBtn"){ openSheet(t("favShareTitle"), t("favShareText")(state.fav.size), baseUrl()+"?fav="+[...state.fav].join(",")+(lang==="en"?"&lang=en":"")+"#my"); return; }
+  if (e.target.id==="nsetBtn"){ state.nset = !state.nset; render(); return; }
   if (e.target.id==="notifyBtn"){
     if (Notification.permission==="denied"){ toast(t("notifyDenied")); return; }
     const r = await Notification.requestPermission(); render(); if (r==="granted") toast(t("notifyNote")); return; }
+});
+document.addEventListener("change", e=>{
+  const k = e.target.dataset && e.target.dataset.np; if (!k) return;
+  const pf = PREF(); pf[k] = e.target.checked; LS("npref", pf);
+  toast(`${e.target.closest(".nrow").querySelector("b").textContent}: ${e.target.checked?t("on"):t("off")}`);
 });
 document.addEventListener("visibilitychange", ()=>{ if (!document.hidden) load(false); });
 
