@@ -299,14 +299,15 @@ const I18N = {
     wd:["日","月","火","水","木","金","土"], mon:"10月",
     slots:n=>`${n} 件の出番`, compDays:"競技日 10/7〜10/11", noSlot:"この条件の出番はありません。",
     myEmpty:`まだマイ選手がいません。「出場選手」や「順位」でカードの <b>★</b> をタップすると、ここでまとめて追跡できます。得点が入ると <b>NEW</b> と表示されます。`,
-    newBadge:"NEW", nextUp:"次の出番", notifyOn:"🔔 通知をオン", notifyOk:"🔔 通知オン（成績・出番30/10分前）", shareFav:"マイ選手を共有", clearNew:"NEWを消す",
+    newBadge:"NEW", nextUp:"次の出番", notifyOn:"🔔 通知をオン", notifyOk:"🔔 通知オン（結果・出番30/10分前）", shareFav:"マイ選手を共有", clearNew:"NEWを消す",
     toastNew:n=>`マイ選手の成績が ${n} 件更新されました`,
+    resT:"結果", pts:v=>`${v}点`, totalW:"／合計", provRank:r=>`暫定${r}位`,
     shareTitle:"このトラッカーを共有", shareText:"下のURLを送れば、誰でもスマホで開けます（IGPファンによる非公式の簡易トラッカーです）。",
     copy:"コピー", copied:"コピーしました", close:"閉じる", nativeShare:"LINE などで送る",
     favShareTitle:"マイ選手を共有", favShareText:n=>`あなたのマイ選手 ${n} 頭を入れたリンクです。受け取った人は1タップで同じ選手を追跡できます。`,
     importTitle:"マイ選手の追加", importText:n=>`共有リンクに ${n} 頭の選手が含まれています。あなたのマイ選手に追加しますか？`, add:"追加する", skip:"追加しない", added:n=>`${n} 頭を追加しました`,
     notifyDenied:"通知が許可されていません。ブラウザの設定から許可してください。",
-    notifyNote:"新しい成績と、マイ選手の出番の30分前・10分前に通知します（このページを開いている間）。",
+    notifyNote:"マイ選手の結果（科目ごとの点数）と、出番の30分前・10分前に通知します（このページを開いている間）。",
     soonT:"まもなく出番", soonIn:m=>`あと${m}分`, soonLocal:"現地", soonNow:"まもなく",
     favAdd:"マイ選手に追加", favDel:"マイ選手から外す"
   },
@@ -328,14 +329,15 @@ const I18N = {
     wd:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], mon:"Oct",
     slots:n=>`${n} start slots`, compDays:"Competition Oct 7–11", noSlot:"No start slots for this filter.",
     myEmpty:`No dogs tracked yet. Tap <b>★</b> on any card in Entries or Ranking to follow it here. New scores are marked <b>NEW</b>.`,
-    newBadge:"NEW", nextUp:"Next up", notifyOn:"🔔 Turn on alerts", notifyOk:"🔔 Alerts on (scores · 30/10 min before)", shareFav:"Share my dogs", clearNew:"Clear NEW",
+    newBadge:"NEW", nextUp:"Next up", notifyOn:"🔔 Turn on alerts", notifyOk:"🔔 Alerts on (results · 30/10 min before)", shareFav:"Share my dogs", clearNew:"Clear NEW",
     toastNew:n=>`${n} new score update(s) for your dogs`,
+    resT:"Result", pts:v=>`${v} pts`, totalW:"/ total", provRank:r=>`provisional #${r}`,
     shareTitle:"Share this tracker", shareText:"Send this link — anyone can open it on their phone (unofficial fan-made quick tracker).",
     copy:"Copy", copied:"Copied", close:"Close", nativeShare:"Send via apps",
     favShareTitle:"Share my dogs", favShareText:n=>`This link includes your ${n} tracked dogs. Friends can follow the same dogs in one tap.`,
     importTitle:"Add tracked dogs", importText:n=>`This link includes ${n} dogs. Add them to your list?`, add:"Add", skip:"Not now", added:n=>`Added ${n} dogs`,
     notifyDenied:"Notifications are blocked. Allow them in your browser settings.",
-    notifyNote:"Alerts for new scores and 30 / 10 min before your dogs' turns (while this page is open).",
+    notifyNote:"Alerts for your dogs' results (score per phase) and 30 / 10 min before their turns (while this page is open).",
     soonT:"Up soon", soonIn:m=>`in ${m} min`, soonLocal:"local", soonNow:"now",
     favAdd:"Track this dog", favDel:"Stop tracking"
   }
@@ -611,21 +613,32 @@ async function load(first){
   }
   render();
 }
+// マイ選手の成績・状態の変化を検出。科目ごとに「何点が出たか」を通知（ページを開き直したときも、前回見た状態との差を通知）
 function detectChanges(first){
-  let n = 0;
+  let n = 0; const msgs = [];
+  const sv = state.seenV || (state.seenV = LS("seenV") || {});
   P.forEach(p=>{
     if (!state.fav.has(p.cat)) return;
-    const s = snap(p);
-    if (state.seen[p.cat] === undefined){ state.seen[p.cat] = s; return; }
-    if (state.seen[p.cat] !== s){ if (!state.fresh.has(p.cat)) n++; state.fresh.add(p.cat); }
-  });
-  LS("seen", state.seen); LS("freshList", [...state.fresh]);
-  if (n){
-    toast(t("toastNew")(n));
-    if (!first && "Notification" in window && Notification.permission==="granted"){
-      const names = P.filter(p=>state.fresh.has(p.cat)).slice(0,3).map(p=>`${flag(p.cc)} ${p.h} (${p.d}) ${p.sum??""}`).join("\n");
-      try{ new Notification("WUSV 2026", {body: t("toastNew")(n) + "\n" + names, tag:"wusv26"}); }catch(e){}
+    const s = snap(p), cur = {a:p.a,b:p.b,c:p.c,ss:p.ss||null};
+    if (state.seen[p.cat] === undefined || !sv[p.cat]){ if (state.seen[p.cat] === undefined) state.seen[p.cat] = s; sv[p.cat] = cur; return; }
+    const old = sv[p.cat] || {};
+    if (state.seen[p.cat] !== s){ if (!state.fresh.has(p.cat)) n++; state.fresh.add(p.cat); state.seen[p.cat] = s; }
+    const parts = [];
+    ["a","b","c"].forEach(k=>{ if (cur[k]!=null && cur[k]!==old[k]) parts.push(`${k.toUpperCase()} ${t("sec")[k.toUpperCase()]} ${t("pts")(cur[k])}`); });
+    if (cur.ss && cur.ss!==old.ss) parts.push(stLabel(cur.ss));
+    if (parts.length){
+      const tail = cur.ss ? "" : ` ${t("totalW")} ${p.sum}${p.rank?` · ${t("provRank")(p.rank)}`:""}`;
+      msgs.push({p, line:`${parts.join(" · ")}${tail}`});
     }
+    sv[p.cat] = cur;
+  });
+  LS("seen", state.seen); LS("seenV", sv); LS("freshList", [...state.fresh]);
+  if (!msgs.length) return;
+  toast(msgs.length===1 ? `📣 ${msgs[0].p.h}: ${msgs[0].line}` : t("toastNew")(msgs.length));
+  if ("Notification" in window && Notification.permission==="granted"){
+    msgs.slice(0,5).forEach(({p,line})=>{
+      try{ new Notification(`📣 ${t("resT")} — ${flag(p.cc)} ${p.h}`, {body:`🐕 ${p.d}\n${line}`, tag:"wusv26r-"+p.cat}); }catch(e){}
+    });
   }
 }
 function markSeen(){
