@@ -100,3 +100,8 @@ button.slot{width:100%;border:0;text-align:left;cursor:pointer}
 #refreshBtn svg{flex:none}
 #refreshBtn.spin svg{animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ランク外（70点未満の科目あり） */
+.rank.nrk{font-size:14px;color:var(--mute);font-family:var(--body);font-weight:700;padding-top:6px;letter-spacing:.02em}
+.tot .nrl{font-style:normal;color:var(--c);font-weight:600}
+.rsep{margin:14px 2px 8px;font-size:12px;font-weight:700;color:var(--c);border-top:2px dashed var(--line);padding-top:10px}
