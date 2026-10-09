@@ -248,6 +248,31 @@ button.slot{width:100%;border:0;text-align:left;cursor:pointer}
 .tot .nrl{font-style:normal;color:var(--c);font-weight:600}
 .rsep{margin:14px 2px 8px;font-size:12px;font-weight:700;color:var(--c);border-top:2px dashed var(--line);padding-top:10px}
 
+/* 確定順位：メダル */
+.rank.md{padding-top:0;min-width:38px}
+.medal{width:36px;height:44px;display:block;margin:0 auto}
+.medal .rb1{fill:#2F5DA8}.medal .rb2{fill:#C8332B}
+.medal text{font-family:var(--disp);font-weight:800;font-size:15px}
+.medal.m1 .disc{fill:#E2B415}.medal.m1 .ring{fill:none;stroke:#FFF3B8;stroke-width:1.5}.medal.m1 text{fill:#6B4E00}
+.medal.m2 .disc{fill:#B9C2C8}.medal.m2 .ring{fill:none;stroke:#F2F5F7;stroke-width:1.5}.medal.m2 text{fill:#3E4A52}
+.medal.m3 .disc{fill:#C27C47}.medal.m3 .ring{fill:none;stroke:#F3D3BB;stroke-width:1.5}.medal.m3 text{fill:#4E2A10}
+/* 各科目の最高得点マーク */
+.ico{width:1.05em;height:1.05em;vertical-align:-.15em;fill:currentColor}
+.tag.best{font-weight:700;border:1.5px solid currentColor;background:var(--card)}
+.tag.bA{color:var(--a)}.tag.bB{color:var(--b)}.tag.bC{color:var(--c)}
+.seg.best{box-shadow:inset 0 0 0 2px currentColor}
+.seg.A.best{color:var(--a)}.seg.B.best{color:var(--b)}.seg.C.best{color:var(--c)}
+.seg.best .lb{color:var(--ink2)}
+.seg.best .sc{color:var(--ink)}
+.seg .sc .mk{font-style:normal;font-size:17px;margin-right:4px;vertical-align:1px}
+.seg.A .sc .mk{color:var(--a)}.seg.B .sc .mk{color:var(--b)}.seg.C .sc .mk{color:var(--c)}
+/* 確定・暫定の帯 */
+.final{background:var(--ink);color:#fff;border-radius:14px;padding:10px 14px;margin-bottom:10px;display:flex;flex-direction:column;gap:2px}
+.final b{font-size:15px}.final span{font-size:11.5px;color:#C7D2CB}
+.prov{font-size:12px;color:var(--mute);margin:0 2px 8px}
+.final .fi{font-style:normal;display:inline-flex;border-radius:5px;padding:1px 2px;background:#fff;margin:0 1px}
+.final .fa{color:var(--a)}.final .fb{color:var(--b)}.final .fc{color:var(--c)}
+
 </style>
 </head>
 <body>
@@ -335,6 +360,7 @@ const I18N = {
     nPhone:"スマホの通知", nPhoneS:"ブラウザの通知を許可すると、画面の上に届きます",
     nPhoneOn:"許可済み", nUnsup:"このブラウザは通知に対応していません",
     nNote:"通知はこのページを開いている間に届きます。設定はこのスマホにだけ保存されます。", on:"オン", off:"オフ",
+    bestIn:k=>`${k}最高点`, finalT:"最終順位（確定）", finalS:"全競技が終了しました。🥇🥈🥉＝1〜3位　__IA__ A追求・__IB__ B服従・__IC__ C防衛＝各科目の最高得点", provT:"暫定順位（競技中）",
     nrShort:"外", nrLong:"ランク外", nrSep:"ランク外 — 70点未満の科目がある選手（順位なし・総合点順）",
     resT:"結果", pts:v=>`${v}点`, totalW:"／合計", provRank:r=>`暫定${r}位`,
     shareTitle:"このトラッカーを共有", shareText:"下のURLを送れば、誰でもスマホで開けます（IGPファンによる非公式の簡易トラッカーです）。",
@@ -373,6 +399,7 @@ const I18N = {
     nPhone:"Phone notifications", nPhoneS:"Allow browser notifications to get them on your lock / top screen",
     nPhoneOn:"Allowed", nUnsup:"This browser doesn't support notifications",
     nNote:"Alerts arrive while this page is open. Settings are saved on this device only.", on:"on", off:"off",
+    bestIn:k=>`Best ${k}`, finalT:"Final standings", finalS:"All phases finished. 🥇🥈🥉 = 1st–3rd · __IA__ A Tracking · __IB__ B Obedience · __IC__ C Protection = top score in each phase", provT:"Provisional standings (in progress)",
     nrShort:"NR", nrLong:"Not ranked", nrSep:"Not ranked — a phase under 70 (no placing, sorted by total)",
     resT:"Result", pts:v=>`${v} pts`, totalW:"/ total", provRank:r=>`provisional #${r}`,
     shareTitle:"Share this tracker", shareText:"Send this link — anyone can open it on their phone (unofficial fan-made quick tracker).",
@@ -394,7 +421,7 @@ const LS = (k,v) => v===undefined ? JSON.parse(localStorage.getItem("wusv26_"+k)
 const params = new URLSearchParams(location.search);
 let lang = params.get("lang") || LS("lang") || ((navigator.language||"ja").startsWith("ja") ? "ja" : "en");
 const t = k => I18N[lang][k];
-let DATA = null, P = [], countries = [];
+let DATA = null, P = [], countries = [], FINAL = false;
 let state = {q:"", cc:null, view:"list", res:false, day:null, sec:null,
   fav:new Set(LS("fav")||[]), seen:LS("seen")||{}, fresh:new Set()};
 let online = true;
@@ -406,6 +433,28 @@ const COMP_DAY = new Date("2026-10-07T00:00:00");
 const DAYS = ["2026-10-07","2026-10-08","2026-10-09","2026-10-10","2026-10-11"];
 const snap = p => [p.a,p.b,p.c,p.t,p.rt,p.ss,p.ax,p.bx,p.cx].join("|");
 
+// 全競技終了の判定：本戦の全選手が「3科目とも点数あり」か「失格・棄権など」。window.__FINAL でデモ用に強制可
+function isFinal(){
+  if (window.__FINAL!==undefined) return window.__FINAL;
+  const act = P.filter(p=>!p.res);
+  return act.length>0 && act.every(p=>p.ss || (p.a!=null && p.b!=null && p.c!=null));
+}
+// 各科目の最高得点（本戦・失格/棄権を除く）。同点は全員
+function topScores(){
+  const top = {};
+  ["a","b","c"].forEach(k=>{ const v = P.filter(p=>!p.res && !p.ss && p[k]!=null).map(p=>p[k]); top[k] = v.length ? Math.max(...v) : null; });
+  return top;
+}
+// オリジナルのマーク（同じ線の太さ・角の丸みで統一。色は各科目の色を継承）
+// A 追求：旗と、トラックに置かれた物品3つ
+const ICO_A = `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 22V2.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M18.7 3h4.8l-1.8 3 1.8 3h-4.8z" fill="currentColor"/><rect x="1" y="17.4" width="7" height="4.2" rx="1.2" fill="currentColor"/><rect x="2.4" y="18.6" width="4.2" height="1.8" rx=".6" fill="#fff" fill-opacity=".45"/><rect x="7.6" y="11.4" width="7" height="4.2" rx="1.2" fill="currentColor"/><rect x="9" y="12.6" width="4.2" height="1.8" rx=".6" fill="#fff" fill-opacity=".45"/><rect x="1.6" y="5.4" width="7" height="4.2" rx="1.2" fill="currentColor"/><rect x="3" y="6.6" width="4.2" height="1.8" rx=".6" fill="#fff" fill-opacity=".45"/></svg>`;
+// B 服従：持来（もってこい）用の木製ダンベル
+const ICO_B = `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="10.3" width="10" height="3.4" rx="1.3" fill="currentColor"/><rect x="2" y="5.5" width="5.4" height="13" rx="1.8" fill="currentColor"/><rect x="16.6" y="5.5" width="5.4" height="13" rx="1.8" fill="currentColor"/><path d="M3.8 8v8M18.4 8v8" stroke="#fff" stroke-opacity=".45" stroke-width="1.1" stroke-linecap="round"/><path d="M8.5 12h7" stroke="#fff" stroke-opacity=".35" stroke-width=".9" stroke-linecap="round"/></svg>`;
+// C 防衛：ヘルパーが隠れるブラインド（テント）
+const ICO_C = `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 2 20.5h20z" fill="currentColor"/><path d="M12 9.2 8.2 20.5h7.6z" fill="#fff" fill-opacity=".9"/><path d="M12 2.8V1.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M1.5 20.5h21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+const DUMBBELL = ICO_B;
+const MARK = {A:ICO_A, B:ICO_B, C:ICO_C};
+const MEDAL = r => `<svg class="medal m${r}" viewBox="0 0 40 48" aria-label="${r}"><path class="rb1" d="M10 0h8l6 16h-8z"/><path class="rb2" d="M30 0h-8l-6 16h8z"/><circle class="disc" cx="20" cy="30" r="15"/><circle class="ring" cx="20" cy="30" r="11.5"/><text x="20" y="35.5" text-anchor="middle">${r}</text></svg>`;
 function prepare(){
   P = DATA.parts.map(p => {
     const dob = new Date(p.dob+"T00:00:00");
@@ -419,6 +468,8 @@ function prepare(){
   countries = [...new Set(P.map(p=>p.cc))];
   const rk = ranked(); const rmap = new Map(rk.map(p=>[p.cat,p.rank]));
   P.forEach(p => { p.rank = rmap.get(p.cat) ?? null; p.nr = !p.res && !p.ss && p.sum!=null && low(p); });
+  FINAL = isFinal(); const tp = topScores();
+  P.forEach(p => { p.best = FINAL && !p.res && !p.ss ? ["A","B","C"].filter(k=>p[k.toLowerCase()]!=null && p[k.toLowerCase()]===tp[k.toLowerCase()]) : []; });
 }
 function sortCountries(){
   countries.sort((a,b)=> a==="JP"?-1 : b==="JP"?1 : cname(a).localeCompare(cname(b), lang));
@@ -483,8 +534,9 @@ function seg(p,k,flash){
     : sx ? `<div class="sc stx ${sx.code==="-"?"dash":""}">${esc(sx.txt)}</div>`
     : `<div class="sc pend">${t("pend")}</div>`;
   const cls = sx&&sx.code==="fz" ? "fzc" : (sx&&v==null&&sx.code!=="-"?"stc":"");
-  return `<div class="seg ${k} ${v!=null?"done":""} ${cls} ${flash&&v!=null?"flash":""}"><div class="lb"><em>${k}</em>${t("sec")[k]}</div>
-    ${main}
+  const best = (p.best||[]).includes(k);
+  return `<div class="seg ${k} ${v!=null?"done":""} ${cls} ${best?"best":""} ${flash&&v!=null?"flash":""}"><div class="lb"><em>${k}</em>${t("sec")[k]}</div>
+    ${best ? main.replace('<div class="sc">', `<div class="sc"><i class="mk">${MARK[k]}</i>`) : main}
     ${w?`<div class="when">${esc(fmtWhen(w))}</div>`:""}
     <div class="fill" style="width:${v!=null?Math.max(2,v):0}%"></div></div>`;
 }
@@ -536,7 +588,8 @@ function checkSoon(){
 }
 function card(p, showRank){
   const fav = state.fav.has(p.cat), fresh = state.fresh.has(p.cat);
-  const rk = showRank ? (p.rank ? `<div class="rank ${p.rank<=3?"r"+p.rank:""}">${p.rank}</div>` : p.nr ? `<div class="rank nrk">${t("nrShort")}</div>` : "") : "";
+  const rk = showRank ? (p.rank ? (FINAL && p.rank<=3 ? `<div class="rank md">${MEDAL(p.rank)}</div>` : `<div class="rank ${p.rank<=3?"r"+p.rank:""}">${p.rank}</div>`) : p.nr ? `<div class="rank nrk">${t("nrShort")}</div>` : "") : "";
+  const bestTags = (p.best||[]).map(k=>`<span class="tag best b${k}">${MARK[k]} ${t("bestIn")(k)}</span>`).join("");
   return `<article class="card ${p.res?"res":""} ${fresh?"new":""} ${p.ss?"out":""}" id="c-${esc(p.cat)}">${fresh?`<span class="badge">${t("newBadge")}</span>`:""}
     <div class="row1">${rk}
       <div class="who">
@@ -545,7 +598,7 @@ function card(p, showRank){
         <div class="tags"><span class="tag cat">${esc(p.cat)}</span>${(p.st||p.sched.no)?`<span class="tag draw">${t("drawNo") ? t("drawNo")+" " : ""}#${p.st||p.sched.no}</span>`:""}
           <span class="tag sx-${p.sx}">${p.sx==="F"?t("female"):t("male")}</span>
           <span class="tag">${t("age")(p.ageY,p.ageM)}</span>
-          ${p.res?`<span class="tag rsv">${t("reserve")}</span>`:""}</div>
+          ${p.res?`<span class="tag rsv">${t("reserve")}</span>`:""}${bestTags}</div>
       </div>
       <div class="tot">${p.ss?`<b class="stt">${esc(stLabel(p.ss))}</b><span>${p.sum!=null&&p.ss!=="D"?p.sum+" · ":""}${t("stNote")}</span>`:`<b>${p.sum??"—"}</b><span>${p.nr?`<em class="nrl">${t("nrLong")}</em>`:t("ofN")(p.done)}</span>`}</div>
       <button class="star" data-fav="${esc(p.cat)}" aria-pressed="${fav}" aria-label="${fav?t("favDel"):t("favAdd")}">★</button>
@@ -588,7 +641,8 @@ function renderRank(){
     let sep=false;
     body = (list.length||outs.length) ? list.map(p=>{ const h = p.nr && !sep ? (sep=true, `<div class="rsep">${t("nrSep")}</div>`) : ""; return h + card(p,true); }).join("") + outs.map(p=>card(p,false)).join("") : `<div class="empty">${t("none")}</div>`;
   }
-  el("v-rank").innerHTML = strip() + body;
+  const fin = FINAL ? `<div class="final"><b>🏁 ${t("finalT")}</b><span>${t("finalS").replace("__IA__",`<i class="fi fa">${ICO_A}</i>`).replace("__IB__",`<i class="fi fb">${ICO_B}</i>`).replace("__IC__",`<i class="fi fc">${ICO_C}</i>`)}</span></div>` : (all.length ? `<div class="prov">${t("provT")}</div>` : "");
+  el("v-rank").innerHTML = fin + strip() + body;
 }
 function nsetPanel(perm){
   const pf = PREF();

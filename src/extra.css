@@ -105,3 +105,28 @@ button.slot{width:100%;border:0;text-align:left;cursor:pointer}
 .rank.nrk{font-size:14px;color:var(--mute);font-family:var(--body);font-weight:700;padding-top:6px;letter-spacing:.02em}
 .tot .nrl{font-style:normal;color:var(--c);font-weight:600}
 .rsep{margin:14px 2px 8px;font-size:12px;font-weight:700;color:var(--c);border-top:2px dashed var(--line);padding-top:10px}
+
+/* 確定順位：メダル */
+.rank.md{padding-top:0;min-width:38px}
+.medal{width:36px;height:44px;display:block;margin:0 auto}
+.medal .rb1{fill:#2F5DA8}.medal .rb2{fill:#C8332B}
+.medal text{font-family:var(--disp);font-weight:800;font-size:15px}
+.medal.m1 .disc{fill:#E2B415}.medal.m1 .ring{fill:none;stroke:#FFF3B8;stroke-width:1.5}.medal.m1 text{fill:#6B4E00}
+.medal.m2 .disc{fill:#B9C2C8}.medal.m2 .ring{fill:none;stroke:#F2F5F7;stroke-width:1.5}.medal.m2 text{fill:#3E4A52}
+.medal.m3 .disc{fill:#C27C47}.medal.m3 .ring{fill:none;stroke:#F3D3BB;stroke-width:1.5}.medal.m3 text{fill:#4E2A10}
+/* 各科目の最高得点マーク */
+.ico{width:1.05em;height:1.05em;vertical-align:-.15em;fill:currentColor}
+.tag.best{font-weight:700;border:1.5px solid currentColor;background:var(--card)}
+.tag.bA{color:var(--a)}.tag.bB{color:var(--b)}.tag.bC{color:var(--c)}
+.seg.best{box-shadow:inset 0 0 0 2px currentColor}
+.seg.A.best{color:var(--a)}.seg.B.best{color:var(--b)}.seg.C.best{color:var(--c)}
+.seg.best .lb{color:var(--ink2)}
+.seg.best .sc{color:var(--ink)}
+.seg .sc .mk{font-style:normal;font-size:17px;margin-right:4px;vertical-align:1px}
+.seg.A .sc .mk{color:var(--a)}.seg.B .sc .mk{color:var(--b)}.seg.C .sc .mk{color:var(--c)}
+/* 確定・暫定の帯 */
+.final{background:var(--ink);color:#fff;border-radius:14px;padding:10px 14px;margin-bottom:10px;display:flex;flex-direction:column;gap:2px}
+.final b{font-size:15px}.final span{font-size:11.5px;color:#C7D2CB}
+.prov{font-size:12px;color:var(--mute);margin:0 2px 8px}
+.final .fi{font-style:normal;display:inline-flex;border-radius:5px;padding:1px 2px;background:#fff;margin:0 1px}
+.final .fa{color:var(--a)}.final .fb{color:var(--b)}.final .fc{color:var(--c)}
