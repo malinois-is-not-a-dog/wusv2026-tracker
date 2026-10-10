@@ -19,31 +19,38 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Fetch official data
-        run: python3 scripts/update.py
-      - name: Commit if changed
-        run: |
-          if git diff --quiet -- data.json; then echo "no change"; exit 0; fi
-          # 出番表が空 → 入った瞬間（＝抽選公開後の初回取り込み）を検出
-          before=$(git show HEAD:data.json | python3 -c "import json,sys;print(len(json.load(sys.stdin).get('sched',{})))")
-          after=$(python3 -c "import json;print(len(json.load(open('data.json')).get('sched',{})))")
-          if [ "$before" = "0" ] && [ "$after" != "0" ]; then echo "DRAW=1" >> "$GITHUB_ENV"; fi
-          git config user.name "wusv-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data.json
-          git commit -m "data: $(date -u +'%Y-%m-%d %H:%M') UTC"
-          git push
-      - name: Report draw (first time only)
-        if: env.DRAW == '1'
+      - name: Fetch official data (loops during the event)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python3 scripts/draw_report.py
-          title="抽選結果を取り込みました（$(date -u +'%m/%d %H:%M') UTC）"
-          if head -1 draw_report.md | grep -q "⚠️"; then title="⚠️ $title 要確認"; fi
-          gh issue create --title "$title" --body-file draw_report.md --assignee "${{ github.repository_owner }}"
+          # GitHub の定期実行は混雑時に数時間おきまで間引かれるため、
+          # 大会期間中は1回の実行の中で3分おきに公式を確認し続ける（最長 5時間45分）。
+          git config user.name "wusv-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          today=$(date -u +%Y%m%d)
+          if [ "$today" -ge 20261005 ] && [ "$today" -le 20261012 ]; then limit=$((345*60)); else limit=0; fi
+          start=$(date +%s); fails=0
+          while :; do
+            if python3 scripts/update.py; then
+              fails=0
+              if ! git diff --quiet -- data.json; then
+                git add data.json
+                git commit -qm "data: $(date -u +'%Y-%m-%d %H:%M') UTC"
+                git pull -q --rebase -X theirs origin main || true
+                git push -q && echo "pushed $(date -u +%H:%M)"
+              fi
+            else
+              fails=$((fails+1)); git checkout -- data.json 2>/dev/null || true
+              echo "update failed ($fails in a row)"
+              # 3回続けて失敗 → 実行を失敗で終える（GitHubから通知メール）
+              if [ "$fails" -ge 3 ]; then exit 1; fi
+            fi
+            [ $(( $(date +%s) - start )) -ge "$limit" ] && break
+            sleep 180
+          done
