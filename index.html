@@ -337,7 +337,7 @@ const I18N = {
     title:"トラッカー", unoff:"非公式", disc:"IGPファンが作った非公式のトラッカーです。公式発表との時間差や変更がある場合があります。簡易チェック用としてお使いください。", discLink:"正式な情報は公式サイトへ →", discShort:"非公式・簡易チェック用。正式な情報は公式サイトでご確認ください。", dates:"2026年10月5日〜11日（競技 7〜11日）", share:"共有",
     ph:"🇯🇵・日本・ハンドラー・犬名・JP-01", showRes:"補欠も表示", all:"すべて", allC:"🌐 すべての国", fav:"★ マイ選手",
     tList:"出場選手", tRank:"順位", tMy:"マイ選手", tSched:"日程",
-    src:"データ：公式", upd:"最終更新", tie:"順位は総合点の高い順。同点ならC科目の高い方が上位。1科目でも70点未満があればランク外（順位なし・総合点順に下へ並ぶ）",
+    src:"データ：公式", upd:"最終更新", tie:"順位は総合点の高い順。同点ならC防衛、それも同点ならB服従、それも同点ならA追求の高い方が上位。1科目でも70点未満があればランク外（順位なし・総合点順に下へ並ぶ）",
     refresh:"更新", refreshing:"更新中…", upToDate:t=>`最新です（${t} 更新）`, gotNew:t=>`新しいデータを読み込みました（${t} 更新）`, refreshFail:"更新できませんでした。通信状態を確認してください。", updAt:t=>`${t} 更新`,
     live:"自動更新中", offline:"オフライン（前回のデータ）", loading:"読み込み中…",
     dogs:(n,c)=>`${n} 頭 / ${c} か国`, rankN:n=>`順位対象 ${n} 頭`, myN:n=>`マイ選手 ${n} 頭`,
@@ -376,7 +376,7 @@ const I18N = {
     title:"Tracker", unoff:"Unofficial", disc:"An unofficial tracker made by IGP fans. Data may lag behind or differ from official announcements — use it as a quick check only.", discLink:"Official site for confirmed info →", discShort:"Unofficial · quick check only. Confirm details on the official site.", dates:"Oct 5–11, 2026 (competition Oct 7–11)", share:"Share",
     ph:"🇯🇵 · Japan · handler · dog · JP-01", showRes:"Show reserves", all:"All", allC:"🌐 All countries", fav:"★ My dogs",
     tList:"Entries", tRank:"Ranking", tMy:"My dogs", tSched:"Schedule",
-    src:"Data: official", upd:"Updated", tie:"Ranked by total; ties broken by higher C score. A phase under 70 means not ranked (listed below, by total)",
+    src:"Data: official", upd:"Updated", tie:"Ranked by total; ties broken by C (Protection), then B (Obedience), then A (Tracking). A phase under 70 means not ranked (listed below, by total)",
     refresh:"Refresh", refreshing:"Refreshing…", upToDate:t=>`Up to date (updated ${t} JST)`, gotNew:t=>`New data loaded (updated ${t} JST)`, refreshFail:"Couldn't refresh. Check your connection.", updAt:t=>`updated ${t} JST`,
     live:"Live", offline:"Offline (last data)", loading:"Loading…",
     dogs:(n,c)=>`${n} dogs / ${c} countries`, rankN:n=>`${n} ranked`, myN:n=>`${n} tracked`,
@@ -474,13 +474,13 @@ function prepare(){
 function sortCountries(){
   countries.sort((a,b)=> a==="JP"?-1 : b==="JP"?1 : cname(a).localeCompare(cname(b), lang));
 }
-// 1科目でも70点未満（Insufficient）があれば、全科目70点以上の選手より下位。各グループ内は総合点→C→B→A の高い順
+// 1科目でも70点未満（Insufficient）があればランク外。順位は 総合点 → C防衛 → B服従 → A追求 の高い順（すべて同じときだけ同順位）
 const low = p => [p.a,p.b,p.c].some(v=>v!=null && v<70);
 function ranked(){
   const r = P.filter(p=>!p.res && !p.ss && p.sum!=null).sort((x,y)=> (low(x)-low(y)) || (y.sum-x.sum) || ((y.c??-1)-(x.c??-1)) || ((y.b??-1)-(x.b??-1)) || ((y.a??-1)-(x.a??-1)));
   let prev=null, rk=0;
   // 70点未満がある選手は順番には並べるが順位は付けない（ランク外）
-  r.forEach((p,i)=>{ if (low(p)){ p.rank=null; p.nr=true; return; } const key=p.sum+"|"+(p.c??-1); if(key!==prev){rk=i+1;prev=key} p.rank=rk; });
+  r.forEach((p,i)=>{ if (low(p)){ p.rank=null; p.nr=true; return; } const key=[p.sum,p.c??-1,p.b??-1,p.a??-1].join("|"); if(key!==prev){rk=i+1;prev=key} p.rank=rk; });
   return r;
 }
 function match(p, ignoreCc){
